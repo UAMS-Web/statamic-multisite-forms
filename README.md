@@ -48,6 +48,19 @@ What the `{{ form }}` tags (`form:create`, the `{{ form:contact }}` shorthand, `
 
 `form:fields` inside `form:create` needs no gate of its own: it renders only the fields `form:create` hands it.
 
+Fetched with no template to render, as `Statamic::tag('form:create')->params(['in' => 'contact'])->fetch()` does in Blade or PHP, `form:create` returns the form's data as an array, as Statamic's does. Under `empty`, an unassigned form returns an empty array instead, so guard the markup that reads it:
+
+```blade
+@php($form = Statamic::tag('form:create')->params(['in' => 'contact'])->fetch())
+@if ($form)
+    <form method="{{ $form['attrs']['method'] }}" action="{{ $form['attrs']['action'] }}">
+        ...
+    </form>
+@endif
+```
+
+Without the guard, reading `$form['attrs']` fails on a site the form is not assigned to.
+
 A form assigned to the page's site, and a form with no sites, render as Statamic renders them. A submit to a form from a site it is not assigned to always answers 404, whatever `not_assigned` says.
 
 ## Development
