@@ -226,3 +226,14 @@ Oldest first, one entry per closed decision, so **a new entry is appended to the
 **Residual.** Another add-on, or an app-level `app/Tags` class, that also registers the `form` handle conflicts with this one: core registers app tags before add-ons boot, so this add-on silently replaces an app's, and between two add-ons whichever registers last wins. An invalid `not_assigned` value is reported only when a page meets an unassigned form. When the tag is fetched with no parser (`Statamic::tag('form:create')->fetch()`), core returns the form's data as an array, and a gated tag returns an empty string instead, which a template indexing into the result does not expect.
 
 **Companion.** #73. Earlier decision: #39. Spec: `docs/SPEC.md`.
+
+
+## 2026-10-13: The submit site is recorded on FormSubmitted, with a SubmissionCreating backstop on the submit route (#74)
+
+**Decision.** `RecordSubmitSite` sets `_site` on the submission from `FormSubmitted`, which core dispatches from its submit route after building the data and before saving it or queuing its emails, using the shared submit-site helper. It also listens to `SubmissionCreating`: on the submit route, a new submission that reaches its first save without `_site` gets it then. Both are registered explicitly in the service provider.
+
+**Why.** Core dispatches `FormSubmitted` halting on the first listener that returns anything other than null, and Laravel runs listeners in registration order, so an app's listener registered before the add-on's that returns `true` would skip the recording and the submission would save unattributed. The backstop closes that for stored submissions, and is limited to the submit route so a submission saved any other way stays unattributed, as the spec defines. The email job still receives the submission without `_site` in that case when submissions are not stored, which matters less: nothing reads `_site` from an email.
+
+**Rejected.** Recording only on `SubmissionCreating`: it fires only when submissions are stored, so the queued email would never carry the key. Recording only on `FormSubmitted`: the halting gap above. Reordering the dispatcher's listeners so the add-on's runs first: it reaches into the dispatcher's internals. Discovering the listener from a `Listeners` folder: explicit registration keeps the two events in one visible place.
+
+**Companion.** #74. Spec: `docs/SPEC.md` (Recording the site).
