@@ -141,7 +141,7 @@ Event::listen(function (FormSubmitted $event) {
 });
 ```
 
-`site()` on the view returns the handle of the site it was resolved for.
+`site()` on the view returns the handle of the site it was resolved for. The view carries its site's overridden title, email and store, and no `site_overrides` rows: those stay on `base()`, so other sites' recipients never reach a template's `form_config`.
 
 ## Development
 

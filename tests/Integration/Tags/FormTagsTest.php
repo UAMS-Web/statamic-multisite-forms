@@ -3,6 +3,7 @@
 declare(strict_types=1);
 
 use Illuminate\Log\Events\MessageLogged;
+use Illuminate\Support\Collection;
 use Illuminate\Support\Facades\Event;
 use Statamic\Events\FormBlueprintFound;
 use Statamic\Exceptions\NotFoundHttpException;
@@ -10,9 +11,12 @@ use Statamic\Facades\Antlers;
 use Statamic\Facades\Blink;
 use Statamic\Facades\Site;
 use Statamic\Fields\Blueprint;
+use Statamic\Fields\Value;
+use Statamic\Fields\Values;
 use Statamic\Forms\Form;
 use Statamic\Forms\RenderableField;
 use Statamic\Forms\Tags as CoreFormTags;
+use Statamic\Sites\Site as SiteObject;
 use Statamic\Statamic;
 use Statamic\Tags\FluentTag;
 use Statamic\Tags\Loader;
@@ -398,4 +402,82 @@ it('branches an Antlers template and a fetched tag on the assignment', function 
 
     expect($render())->toBe('no|')
         ->and($fetched())->toBeFalse();
+});
+
+/**
+ * Every string in a tag's data, with augmented values unwrapped, so a template's
+ * reach into `form_config` can be searched whatever its nesting.
+ *
+ * @return list<string>
+ */
+function stringsIn(mixed $value): array
+{
+    while ($value instanceof Value) {
+        $value = $value->value();
+    }
+
+    if ($value instanceof SiteObject) {
+        $handle = $value->handle();
+
+        return is_string($handle) ? [$handle] : [];
+    }
+
+    if ($value instanceof Values || $value instanceof Collection) {
+        $value = $value->all();
+    }
+
+    if (is_array($value)) {
+        $strings = [];
+        foreach ($value as $item) {
+            array_push($strings, ...stringsIn($item));
+        }
+
+        return $strings;
+    }
+
+    return is_string($value) ? [$value] : [];
+}
+
+/**
+ * The `form_config` a fetched `form:create` hands a template.
+ */
+function formConfig(CoreFormTags $tag): mixed
+{
+    // Fetched with no template, create() returns data, although its signature says string
+    return data_get($tag->create(), 'form_config');
+}
+
+/**
+ * Save a form shared by both sites whose `es` row overrides the recipient (#62).
+ */
+function formWithSpanishRecipient(): Form
+{
+    $form = taggedForm(['en', 'es']);
+    $form->email([['to' => 'base@example.com']]);
+    $form->set('site_overrides', [['site' => 'es', 'title' => 'Contacto', 'email' => [['to' => 'es-only@example.com']]]]);
+    $form->save();
+
+    return $form;
+}
+
+it("keeps another site's override rows out of form_config (#62)", function (): void {
+    formWithSpanishRecipient();
+
+    $config = formConfig(formTag('create'));
+
+    // The control: core's own tag builds form_config from the stored form, rows included
+    expect(stringsIn(formConfig(coreFormTag())))->toContain('es-only@example.com')
+        ->and(stringsIn($config))->not->toContain('es-only@example.com')
+        ->and(stringsIn($config))->not->toContain('Contacto')
+        ->and(stringsIn($config))->toContain('en', 'es');
+});
+
+it('keeps the override rows out of form_config on the site they belong to as well (#62)', function (): void {
+    Site::setCurrent('es');
+    formWithSpanishRecipient();
+
+    $config = formConfig(formTag('create'));
+
+    expect(stringsIn(formConfig(coreFormTag())))->toContain('es-only@example.com')
+        ->and(stringsIn($config))->not->toContain('es-only@example.com');
 });
