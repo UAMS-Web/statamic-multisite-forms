@@ -474,3 +474,15 @@ The adversarial review of this change found an older gap in the id rule, reprodu
 **Residual.** Field validation runs on the Control Panel save only, so a save in code or from the console is not checked. Forms already widened or made global this way are not found or reverted. Duplicating a form the creator does not cover is #117's.
 
 **Companion.** #118; build in #138. Earlier decisions: #42, #77, #85.
+
+## 2026-10-13: An empty `_site` stays hidden in the scope, and the attribute command repairs it (#130)
+
+**Decision.** A submission whose `_site` is an empty string is left to the Control Panel scope as it is: no non-super user's sites include it and `whereNull('_site')` does not match it, so only super users see it. `multisite-forms:attribute` reads it as unattributed and writes a real site handle, which repairs it. The README says so. The build is #140.
+
+**Why.** Measured in the Testbench app on core's Stache builder (Windows 11): a submission saved through core with `_site` set to `''` is written without the key, reads back as `null`, and is treated as unattributed, because core's `Submission::fileData()` drops the empty value. A file written directly with `_site: ''` reads back as `''`; `whereNull('_site')` misses it and an `es`-only user's Control Panel listing hides it while listing the `es` submission beside it; re-saving it through core removes the key. So an empty site exists only in a file written around core, core gives it the meaning "unattributed" on its next save, and the scope meanwhile fails closed. The command is the tool for giving a submission its site, and it saves through core.
+
+**Rejected.** Treating `''` as unattributed in the scope and the Site filter as well: it spreads a raw-file edge case through every query on the access-control path for a state core never writes. Leaving it with a README note only: operators would have no repair the add-on provides.
+
+**Residual.** Not measured on `statamic/eloquent-driver`, which this repository does not install; whether it stores `''` in its JSON column is open, and #65 can measure it. A file with another non-handle `_site` value behaves the same way and is not covered. Nothing finds such submissions; the command repairs them when run on their form.
+
+**Companion.** #130; build in #140. Earlier decisions: #40, #78, #81.
