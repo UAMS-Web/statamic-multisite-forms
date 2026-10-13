@@ -112,6 +112,30 @@ class FormTags extends Tags
     }
 
     /**
+     * `{{ form:assigned in="contact" }}`: whether the form renders on the page's site,
+     * so a template can hide what surrounds it (#60). True for a form assigned to the
+     * site or one with no sites; false for an unassigned or missing form. It never
+     * aborts or logs, whatever `not_assigned` says.
+     *
+     * As a single tag it returns that boolean, for an Antlers `if` or
+     * `Statamic::tag('form:assigned')->fetch()` in Blade; as a tag pair it renders
+     * its contents only when the form is assigned, as core's `form:errors` does with
+     * its errors. Its name shadows a form whose handle is `assigned` in the
+     * `{{ form:{handle} }}` shorthand, as core's own tag names do.
+     */
+    public function assigned(): mixed
+    {
+        $handle = $this->namedHandle();
+        $assigned = $handle !== null && $this->resolved($handle) instanceof SiteForm;
+
+        if ($this->content === '') {
+            return $assigned;
+        }
+
+        return $assigned ? $this->parse() : '';
+    }
+
+    /**
      * The form for the page's site: the site's read-only view, or null when the
      * form is unassigned or missing.
      */

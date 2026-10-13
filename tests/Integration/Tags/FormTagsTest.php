@@ -13,6 +13,8 @@ use Statamic\Fields\Blueprint;
 use Statamic\Forms\Form;
 use Statamic\Forms\RenderableField;
 use Statamic\Forms\Tags as CoreFormTags;
+use Statamic\Statamic;
+use Statamic\Tags\FluentTag;
 use Statamic\Tags\Loader;
 use UAMSWeb\MultisiteForms\Forms\NotAssigned;
 use UAMSWeb\MultisiteForms\Forms\SiteForm;
@@ -311,3 +313,89 @@ it('refuses a not_assigned value that is not a setting', function (mixed $value)
     'a list' => [['empty']],
     'null' => [null],
 ])->throws(InvalidArgumentException::class, 'statamic-multisite-forms.not_assigned');
+
+/**
+ * Load `form:assigned` the way Antlers does, as a single tag or, with content, a pair.
+ *
+ * @param  array<string, mixed>  $params
+ */
+function assignedTag(array $params = ['in' => 'contact'], string $content = ''): FormTags
+{
+    $tag = app(Loader::class)->load('form', [
+        'parser' => Antlers::parser(),
+        'params' => $params,
+        'content' => $content,
+        'context' => [],
+        'tag' => 'form:assigned',
+        'tag_method' => 'assigned',
+    ]);
+
+    if (! $tag instanceof FormTags) {
+        throw new RuntimeException("The form tag did not load as the add-on's.");
+    }
+
+    return $tag;
+}
+
+it("answers whether a form renders on the page's site (#60)", function (?array $sites, string $site, bool $expected): void {
+    taggedForm($sites);
+    Site::setCurrent($site);
+
+    expect(assignedTag()->assigned())->toBe($expected);
+})->with([
+    "assigned to the page's site" => [['en'], 'en', true],
+    'assigned to another site' => [['en'], 'es', false],
+    'no sites' => [null, 'es', true],
+]);
+
+it('answers false for a missing form rather than reporting it', function (): void {
+    expect(assignedTag(['in' => 'nope'])->assigned())->toBeFalse();
+});
+
+it('neither aborts nor logs for an unassigned form, whatever not_assigned says', function (string $setting): void {
+    config([NotAssigned::CONFIG_KEY => $setting]);
+    taggedForm(['en']);
+    Site::setCurrent('es');
+    $records = loggedRecords();
+
+    expect(assignedTag()->assigned())->toBeFalse()
+        ->and($records->getArrayCopy())->toBe([]);
+})->with(['empty', '404']);
+
+it('renders its contents as a pair only when the form is assigned', function (): void {
+    taggedForm(['en']);
+
+    // With a parser, the pair renders through Antlers, which returns a Stringable rather than a string.
+    $shown = assignedTag(content: '<h2>Contact us</h2>')->assigned();
+
+    expect($shown)->toBeInstanceOf(Stringable::class)
+        ->and($shown instanceof Stringable ? (string) $shown : null)->toBe('<h2>Contact us</h2>');
+
+    Site::setCurrent('es');
+
+    expect(assignedTag(content: '<h2>Contact us</h2>')->assigned())->toBe('');
+});
+
+it('branches an Antlers template and a fetched tag on the assignment', function (): void {
+    taggedForm(['en']);
+    $template = '{{ if {form:assigned in="contact"} }}yes{{ else }}no{{ /if }}|{{ form:assigned in="contact" }}pair{{ /form:assigned }}';
+    $fetched = function (): mixed {
+        $tag = Statamic::tag('form:assigned');
+        if (! $tag instanceof FluentTag) {
+            throw new RuntimeException('Statamic::tag() did not return a fluent tag.');
+        }
+
+        return $tag->params(['in' => 'contact'])->fetch();
+    };
+    // Trusted, as a template is: Antlers leaves tags in untrusted user content unevaluated.
+    $render = fn (): string => (string) Antlers::parse($template, [], true);
+
+    expect($render())->toBe('yes|pair')
+        ->and($fetched())->toBeTrue();
+
+    Site::setCurrent('es');
+    Blink::flush();
+
+    expect($render())->toBe('no|')
+        ->and($fetched())->toBeFalse();
+});
