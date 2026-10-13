@@ -88,7 +88,7 @@ The add-on uses core's own rule for the submit request, `Site::findByUrl(URL::pr
 
 | Surface | Behavior |
 | --- | --- |
-| `{{ form:create }}` and the other form tags | Resolve the form for `Site::current()`. If the form is not assigned, behave per `not_assigned` (below). Otherwise the tag renders the resolved view, so title and the rest follow the site. Mechanism **unverified** (spike 3). |
+| `{{ form:create }}` and the other form tags | Resolve the form for `Site::current()`. If the form is not assigned, behave per `not_assigned` (below). Otherwise the tag renders the resolved view, so title and the rest follow the site. Mechanism: seed the `form-{handle}` Blink key with the resolved view early in the request (spike 3). |
 | Submit | Middleware on the form action route, after route binding, replaces the bound `form` with the resolved view for the request's site. A form not assigned to that site is a 404, matching core's missing-form 404. Because the controller reads `store()` and builds the submission from the bound object, the override of `store` and the email configs reach core with no change to core. Mechanism **unverified** (spike 5). |
 | Recording the site | A `FormSubmitted` listener sets a reserved key on the submission data (`_site`). It runs before save and before emails are queued. Request values starting with `_` are treated by core as parameters, and only blueprint fields are processed into data, so a visitor cannot inject the key. |
 | Email | The submission's form is the resolved view, so `SendEmails` reads the site's `email` list with no hook into core. The site passed to the job is core's own, already the same value. |
@@ -145,7 +145,7 @@ Each phase ends with a host-bound test run in `statamic-multisite-forms-host` (`
 
 1. **Config round trip.** Resolved (#34); see the results below.
 2. **Querying `_site`.** Resolved (#35); see the results below.
-3. **Tag resolution.** Seeding the `form-{handle}` Blink key per request, versus another seam, so the tags see the resolved view without rebinding `Form::find()`.
+3. **Tag resolution.** Resolved (#36); see the results below.
 4. **Submission listing scope.** Which hook lets the Control Panel listing and the export apply the `_site` scope.
 5. **Resolved view through the controller.** A resolved clone as the bound `form`: does `store()`, `makeSubmission()` and the queued email job read the overrides, and does the submission file stay in the form's own folder?
 
@@ -193,3 +193,17 @@ Four submissions were saved to a probe form through `$submission->save()`: two w
 | Control: `where('_site', 'xx')` | none |
 
 After the queries, the form's store listed a `_site` index of class `Statamic\Stache\Indexes\Value`, alongside core's `id`, `path`, `form` and `date`. The index is created on first use and is not declared by the add-on, so nothing needs registering. Not covered: query performance at volume, and behavior when the key is absent from every submission of a form.
+
+### Spike 3: resolving the site view in the form tags (#36)
+
+The `create` tag looks its form up with `Blink::once("form-{handle}", ...)`. A probe instantiated `Statamic\Forms\Tags` as core does, rendered `create` with a content template of `[{{ honeypot }}]`, and compared three states of the Blink key. The honeypot was used as the observable because the tag exposes it from the form it resolved.
+
+| State | Rendered honeypot |
+| --- | --- |
+| Control: nothing seeded | `base_trap`, the value on disk |
+| A clone with honeypot `site_trap` seeded under `form-spike_t` | `site_trap` |
+| The seeded key forgotten | `base_trap` again |
+
+The base file on disk still read `base_trap` after the seeded render, and the form's action URL was unchanged (`/!/forms/spike_t`). So the tags accept a resolved view through Blink with no change to `Form::find()` or the repository. The seed must happen before the tag runs and within the same request, because Blink is request-scoped. Not covered: a render through a real page request and view, since `Antlers::parse` in a console returned empty output for every tag tried, including a control tag, so the probe went through the tag class directly.
+
+The `create` tag also runs `attrs`, `after-open` and `before-close` hooks (`Forms/Tags.php`). `after-open` is a candidate seam for carrying a signed site value in a hidden field later, the hardening named under Site determination. It was read in source, not exercised.
