@@ -88,6 +88,7 @@
         "test:serial": "pest --testsuite=Unit,Integration",
         "stan": "phpstan analyse --no-progress --memory-limit=2G",
         "test:mutate-ignore": "@php scripts/check-mutate-ignore.php",
+        "test:mutation-instrument": "@php .claude/skills/pcov-setup/scripts/check-mutation-instrument.php",
         "test:scripts": [
             "node scripts/check-no-emoji.mjs",
             "node scripts/check-decision-log-order.mjs",
@@ -96,6 +97,7 @@
         "ci": [
             "@test:scripts",
             "@test:mutate-ignore",
+            "@test:mutation-instrument",
             "@test:pint",
             "@test:refactor",
             "@stan",

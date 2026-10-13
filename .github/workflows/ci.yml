@@ -1,7 +1,7 @@
 name: CI
 
 # The jobs mirror the scripts `composer ci` runs locally, in the same cost order:
-#   composer-validate -> synced-files -> no-emoji -> scripts -> mutate-ignore -> pint -> rector -> phpstan -> pest
+#   composer-validate -> synced-files -> no-emoji -> scripts -> mutate-ignore -> mutation-instrument -> pint -> rector -> phpstan -> pest
 # Each job `needs:` the one before it, so a failure skips every more expensive job
 # after it. The deliberate trade: a successful run is the sum of the jobs, not the
 # longest one. When a job's command changes here, change the matching `composer`
@@ -103,9 +103,22 @@ jobs:
       - uses: ./.github/actions/setup
       - run: composer test:mutate-ignore
 
+  mutation-instrument:
+    name: Mutation instrument (a mutant child can launch)
+    needs: mutate-ignore
+    runs-on: ubuntu-latest
+    timeout-minutes: 10
+    steps:
+      - uses: actions/checkout@v7
+      - uses: ./.github/actions/setup
+      # Fails when a mutant child cannot be launched, which would score every mutant killed.
+      # A real mutation smoke (one that also asserts mutants were created) waits until src/
+      # has logic to mutate.
+      - run: composer test:mutation-instrument
+
   pint:
     name: Pint
-    needs: mutate-ignore
+    needs: mutation-instrument
     runs-on: ubuntu-latest
     timeout-minutes: 10
     steps:
