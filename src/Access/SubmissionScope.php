@@ -207,7 +207,10 @@ final class SubmissionScope
      *
      * The path is compared decoded, because the router matches routes against the
      * decoded path: `/%63p/forms` reaches the Control Panel's forms page, while
-     * `path()` keeps it encoded and core's check is false on it.
+     * `path()` keeps it encoded and core's check is false on it. The decoded path
+     * is not trimmed again: Laravel trims slashes before decoding, so a slash left
+     * at the start came from `%2F`, and the router serves no Control Panel route
+     * there (`/%2Fcp/forms` is a 404).
      *
      * An empty route puts the Control Panel's routes at the root, where they
      * collide with the front end. Every path then counts as a Control Panel one,
@@ -224,9 +227,9 @@ final class SubmissionScope
             return false;
         }
 
-        // Trim the route and the decoded path as the router does
+        // Trim the route as the router trims a prefix, and read the decoded path
         $prefix = trim($route, '/');
-        $path = trim(request()->decodedPath(), '/');
+        $path = request()->decodedPath();
 
         // Match the path against the prefix, or every path for an empty prefix
         return $prefix === '' || $path === $prefix || str_starts_with($path, $prefix.'/');

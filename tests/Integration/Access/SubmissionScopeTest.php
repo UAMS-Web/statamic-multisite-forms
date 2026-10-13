@@ -593,6 +593,7 @@ it('treats a path under the Control Panel route as a Control Panel request, howe
     'a front-end path' => ['/cp', '/contact', false],
     'an API path' => ['/cp', '/api/forms/shared', false],
     'an encoded Control Panel path' => ['/cp', '/%63p/forms', true],
+    'a path decoding to a leading slash' => ['cp', '/%2Fcp/forms', false],
     'the site root' => ['cp', '/', false],
     'an empty route, at the root' => ['', '/forms', true],
 ]);
@@ -634,6 +635,17 @@ it('scopes a Control Panel listing reached through a URL-encoded path', function
     'an encoded letter' => ['/%63p/forms/shared/submissions'],
     'an encoded slash' => ['/cp%2Fforms/shared/submissions'],
 ]);
+
+it('serves no Control Panel listing on a path decoding to a leading slash', function (): void {
+    // Sign in as a super user, whom the scope never limits
+    $this->actingAs(superUser());
+
+    // Expect the router to find no route there, so no Control Panel read happens
+    $this->getJson('/%2Fcp/forms/shared/submissions')->assertNotFound();
+
+    // Expect the same listing served on its plain path, as the control
+    $this->getJson('/cp/forms/shared/submissions')->assertOk();
+});
 
 /**
  * Save an unattributed submission to the es-only form without dispatching events,
