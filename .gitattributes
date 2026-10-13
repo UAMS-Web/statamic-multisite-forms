@@ -34,3 +34,9 @@
 /package-lock.json export-ignore
 /scripts/ export-ignore
 /vitest.config.js export-ignore
+
+# Append-only decision log: two branches that each add an entry merge without a conflict.
+/docs/DECISIONS.md merge=union
+/.editorconfig export-ignore
+/.githooks/ export-ignore
+/docs/ export-ignore

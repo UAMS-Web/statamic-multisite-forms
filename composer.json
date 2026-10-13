@@ -81,10 +81,13 @@
         }
     },
     "scripts": {
+        "post-install-cmd": "@php scripts/setup-git-hooks.php",
+        "post-update-cmd": "@php scripts/setup-git-hooks.php",
         "test": "pest --testsuite=Unit,Integration",
         "stan": "phpstan analyse --no-progress --memory-limit=2G",
         "test:scripts": [
             "node scripts/check-no-emoji.mjs",
+            "node scripts/check-decision-log-order.mjs",
             "npm run test:scripts"
         ],
         "ci": [

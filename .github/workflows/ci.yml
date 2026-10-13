@@ -56,7 +56,7 @@ jobs:
       - run: node .claude/skills/synced-files/scripts/check-synced-files.mjs
 
   no-emoji:
-    name: No emoji in durable records
+    name: Repository guards (emoji, decision log)
     needs: synced-files
     runs-on: ubuntu-latest
     timeout-minutes: 10
@@ -69,6 +69,9 @@ jobs:
 
       # Fails, naming the file and code points, when an emoji reaches a tracked record.
       - run: node scripts/check-no-emoji.mjs
+
+      # Fails, naming the two entries, when docs/DECISIONS.md is out of order.
+      - run: node scripts/check-decision-log-order.mjs
 
   scripts:
     name: Guard-script tests (vitest)
