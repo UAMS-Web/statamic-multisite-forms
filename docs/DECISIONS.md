@@ -144,3 +144,15 @@ Oldest first, one entry per closed decision, so **a new entry is appended to the
 
 **Companion.** #49. Spec: `docs/SPEC.md`.
 
+## 2026-10-13: Unattributed submissions are visible only to users who cover every assigned site (#40)
+
+**Decision.** A submission with no `_site` is shown to a non-super user only when that user can access every site the form is assigned to; for a global form (no `sites` list) that means every site. The `multisite-forms:attribute` command assigns a site to unattributed submissions for installs that want them visible to single-site editors.
+
+**Why.** Unattributed is an ongoing category, not only pre-install history: any submission saved without the submit route has no `_site`. Showing those to anyone who can view the form would let a single-site editor read another site's data whenever the key is missing, which is the leak the add-on exists to prevent and the wrong default for form submissions that may hold personal information. Users trusted with every site the form serves keep full visibility.
+
+**Rejected.** Visible to anyone who can view the form: no change on install, but it leaks across sites indefinitely. Super users only until attributed: safe, but hides ordinary history from everyone with broad access.
+
+**Cost accepted.** Single-site editors lose sight of pre-install submissions until they are attributed. The release that ships the scope says so in its notes.
+
+**Companion.** #40. Spec: `docs/SPEC.md`. Related: #49 (the scope mechanism).
+
