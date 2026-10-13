@@ -350,7 +350,7 @@ Oldest first, one entry per closed decision, so **a new entry is appended to the
 
 **Rejected.** Replacing or extending core's controller: it ties the add-on to that class's internals. A middleware on the front-end `web` group, as the submit gate uses: it would run on every request for two Control Panel routes. Checking the route's URI rather than its name: the Control Panel prefix is configurable.
 
-**Residual.** Three places in core still list every form by title, each through `Form::all()`, so a user sees the titles of forms on sites they cannot access, though following a link to one is now refused: the editor's breadcrumb (`FormBlueprintController::edit()`), the blueprints index for a user with `configure fields` and `configure form fields` (`BlueprintController::forms()`), and the command palette for a user with `configure fields` (`Palette::buildFields()`). Tracked in #124. A user with `configure fields` can also edit a global fieldset that a form's blueprint imports; fieldsets carry no sites, and that permission is not a form permission.
+**Residual.** Three places in core still list every form by title, each through `Form::all()`, so a user sees the titles of forms on sites they cannot access, though following a link to one is now refused: the editor's breadcrumb (`FormBlueprintController::edit()`), the blueprints index for a user with `configure fields` and `configure form fields` (`BlueprintController::forms()`), and the command palette for a user with `configure fields` (`Palette::buildFields()`). The breadcrumb is #124; the blueprints index and the palette are #133. A user with `configure fields` can also edit a global fieldset that a form's blueprint imports; fieldsets carry no sites, and that permission is not a form permission.
 
 **Companion.** #116. Earlier decisions: #77.
 
@@ -413,3 +413,14 @@ Oldest first, one entry per closed decision, so **a new entry is appended to the
 **Residual.** Core's own uses of `isCpRoute()` are unchanged, so other core behavior under a slashed route is as core has it. A request path is not URL-decoded beyond what Laravel's `path()` does, as in core.
 
 **Companion.** #122. Earlier decisions: #49, #78.
+## 2026-10-13: The fields editor's breadcrumb is filtered on the prepared Inertia response (#124)
+
+**Decision.** `UAMSWeb\MultisiteForms\Http\BlueprintBreadcrumbs` listens for Laravel's `PreparingResponse` event. When the response is an Inertia response on the `statamic.cp.blueprints.forms.edit` route, it sets the `additionalBreadcrumbs` page prop to Statamic's pushed breadcrumbs with every link to a form's fields editor the user may not open removed: the forms for which the gate denies `configure form fields`. Every other response passes through.
+
+**Why.** Measured before the change: an `es`-only user with `configure form fields` opening an `es`-only form's editor received the titles and editor links of every other form, `en`-only forms included, in the page's `additionalBreadcrumbs` prop, and in the HTML of a full page load. Core's `FormBlueprintController::edit()` pushes the breadcrumb, and `Breadcrumbs::push()` shares the result with Inertia at once, so nothing before the controller can filter it. Route middleware receives the response only after `Router::prepareResponse()` has rendered it, while `PreparingResponse` fires with the Inertia response still open, and a page prop set with `with()` overrides a shared one of the same name. Limiting links to editors the user may open, rather than to forms they may view, is narrower than the ticket asks: a link to an editor that #116 refuses would lead to a 403.
+
+**Rejected.** Replacing or extending core's controller: it ties the add-on to that class's internals. Filtering in the editor route's middleware: the response is already rendered by then. Rewriting `Breadcrumbs::$pushed` before the controller runs: the controller pushes after any middleware's first half. Limiting links to the forms the user may view: an `es`-only user would see links to an `en` and `es` form's editor, which refuses them.
+
+**Residual.** The blueprints index and the command palette still list every form by title (#133). Another listener that sets `additionalBreadcrumbs` on the same response after this one would replace the filtered prop.
+
+**Companion.** #124. Earlier decisions: #77, #116.
