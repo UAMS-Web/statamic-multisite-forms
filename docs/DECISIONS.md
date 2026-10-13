@@ -350,6 +350,6 @@ Oldest first, one entry per closed decision, so **a new entry is appended to the
 
 **Rejected.** Replacing or extending core's controller: it ties the add-on to that class's internals. A middleware on the front-end `web` group, as the submit gate uses: it would run on every request for two Control Panel routes. Checking the route's URI rather than its name: the Control Panel prefix is configurable.
 
-**Residual.** The editor's breadcrumb links every form by title (`Form::all()` in `FormBlueprintController::edit()`), so a user allowed on one form's editor sees the titles of forms on sites they cannot access (#124).
+**Residual.** Three places in core still list every form by title, each through `Form::all()`, so a user sees the titles of forms on sites they cannot access, though following a link to one is now refused: the editor's breadcrumb (`FormBlueprintController::edit()`), the blueprints index for a user with `configure fields` and `configure form fields` (`BlueprintController::forms()`), and the command palette for a user with `configure fields` (`Palette::buildFields()`). Tracked in #124. A user with `configure fields` can also edit a global fieldset that a form's blueprint imports; fieldsets carry no sites, and that permission is not a form permission.
 
 **Companion.** #116. Earlier decisions: #77.
