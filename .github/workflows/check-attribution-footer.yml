@@ -13,6 +13,11 @@ name: Check attribution footer
 # The body is read from the API rather than from the event payload, so an edit that lands between
 # the event and the run is still the text that is checked.
 #
+# A Dependabot body is generated from the upstream release notes, which can carry emoji nobody on
+# this repository wrote and nobody can edit, so the body check is skipped for that author. The
+# skip is inside the step, not a job-level `if`: a skipped required check stays pending, and a
+# step that exits cleanly reports success.
+#
 # Adapted from the copy in UAMS-Web/uams-statamic.
 
 on:
@@ -43,5 +48,10 @@ jobs:
           REPO: ${{ github.repository }}
           NUMBER: ${{ github.event.pull_request.number }}
         run: |
+          author=$(gh api "repos/$REPO/pulls/$NUMBER" --jq '.user.login')
+          if [ "$author" = "dependabot[bot]" ]; then
+            echo "Skipped: the body of a Dependabot pull request is generated from upstream release notes."
+            exit 0
+          fi
           gh api "repos/$REPO/pulls/$NUMBER" --jq '.body // ""' > "$RUNNER_TEMP/body.md"
           node scripts/check-attribution-footer.mjs "$RUNNER_TEMP/body.md"
