@@ -1,0 +1,43 @@
+<?php
+
+declare(strict_types=1);
+
+namespace UAMSWeb\MultisiteForms\Tests\Feature;
+
+use Statamic\Facades\Addon;
+use Statamic\Facades\Site;
+use Tests\TestCase;
+use UAMSWeb\MultisiteForms\ServiceProvider;
+
+/**
+ * Host-bound smoke test: the add-on is discovered and booted by a real multisite Statamic host.
+ *
+ * This class extends the HOST application's `Tests\TestCase`, which does not exist in this
+ * package, so it cannot run in the standalone gate (`composer ci` has no `Feature` suite and
+ * static analysis excludes this directory). It runs from the root of the host described in
+ * `docs/DEVELOPMENT.md`, with the add-on installed through a path repository.
+ *
+ * @command  php artisan test vendor/uams-web/statamic-multisite-forms/tests/Feature/HostRegistersAddonTest.php
+ */
+final class HostRegistersAddonTest extends TestCase
+{
+    /** The host discovered the package through `extra.statamic` and lists it as an add-on. */
+    public function test_the_host_lists_the_addon(): void
+    {
+        $packages = Addon::all()->map->package()->all();
+
+        $this->assertContains('uams-web/statamic-multisite-forms', $packages);
+    }
+
+    /** The add-on's service provider was registered and booted by the host. */
+    public function test_the_host_registers_the_service_provider(): void
+    {
+        $this->assertInstanceOf(ServiceProvider::class, $this->app->getProvider(ServiceProvider::class));
+    }
+
+    /** The host is multisite, which is the precondition every host-bound test of this add-on needs. */
+    public function test_the_host_is_multisite(): void
+    {
+        $this->assertTrue(Site::multiEnabled());
+    }
+}
