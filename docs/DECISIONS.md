@@ -390,6 +390,18 @@ Oldest first, one entry per closed decision, so **a new entry is appended to the
 
 **Companion.** #81. Earlier decisions: #40, #58.
 
+## 2026-10-13: The API form listings take a `site` filter through bound subclasses of core's (#80)
+
+**Decision.** `UAMSWeb\MultisiteForms\Api\FormsController` and `UAMSWeb\MultisiteForms\GraphQL\FormsQuery` extend core's REST forms controller and GraphQL `forms` query, and are bound in the container in their place. The REST listing reads a `site` query parameter, as core's entries endpoints do; the GraphQL query takes a `site` argument. Either lists the forms the API exposes that are assigned to the site, or have no sites. An unknown site is a validation error: 422 with a message from REST, a `validation` error from GraphQL. Without the filter, or with a null GraphQL argument, the listings are core's.
+
+**Why.** Laravel builds a route's controller, and the GraphQL library each query class, through the container, so a binding adds the filter without touching core's routes or the schema Statamic registers. Filtering after core's allowed-resources check keeps the API's own configuration in charge of what is exposed.
+
+**Rejected.** A 404 for an unknown site, as core's entries endpoints answer: the ticket asks for a validation error, which says what was wrong. `nullable` on the GraphQL argument: Laravel skips other rules for an empty string, so `site: ""` would have listed only the forms with no sites; the rules apply only to a non-null value, and require it.
+
+**Residual.** A host or another add-on binding its own class to either of core's would replace this one, or be replaced by it, depending on order.
+
+**Companion.** #80.
+
 ## 2026-10-13: The fields editor's breadcrumb is filtered on the prepared Inertia response (#124)
 
 **Decision.** `UAMSWeb\MultisiteForms\Http\BlueprintBreadcrumbs` listens for Laravel's `PreparingResponse` event. When the response is an Inertia response on the `statamic.cp.blueprints.forms.edit` route, it sets the `additionalBreadcrumbs` page prop to Statamic's pushed breadcrumbs with every link to a form's fields editor the user may not open removed: the forms for which the gate denies `configure form fields`. Every other response passes through.

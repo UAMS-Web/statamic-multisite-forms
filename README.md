@@ -115,6 +115,25 @@ php please multisite-forms:attribute contact en
 
 The command records the site on every submission of the form that has none, and leaves submissions that already record a site alone. It prints each submission it changes and a count, and logs each change at `info` level with the form, the submission's id and the site. `--dry-run` prints the same list and changes nothing. An unknown form or site, or a site the form is not assigned to, is an error and changes nothing; a form with no sites takes any site. Handles match exactly, including case. Submissions are saved quietly, so no submission event fires, and no email is sent, as for any save outside the submit route. The command leaves alone a submission whose recorded site is an empty string, which it does not count as unattributed. It works with submissions in flat files or in the database through `statamic/eloquent-driver`.
 
+## Filtering the API's form listings by site
+
+Where Statamic's REST API or GraphQL exposes forms, their form listings take an optional `site` filter, which lists only the forms assigned to that site, together with the forms that have no sites:
+
+```sh
+curl 'https://example.com/api/forms?site=es'
+```
+
+```graphql
+{
+  forms(site: "es") {
+    handle
+    title
+  }
+}
+```
+
+Without the filter, or with `site: null` in GraphQL, the listings are Statamic's. A `site` that names no configured site is an error rather than an empty list: the REST API answers 422 with a message, and GraphQL answers a `validation` error. The filter narrows only the forms the API already exposes, and the single-form endpoint and query are unchanged. Submissions are not filtered.
+
 ## Checking a form's site in a template
 
 `form:assigned` answers whether a form renders on the page's site, so a template can hide what surrounds it, such as a heading or an introduction. It is true for a form assigned to the site or one with no sites, and false for a form assigned elsewhere or one that does not exist. It never aborts or logs, whatever `not_assigned` says.
