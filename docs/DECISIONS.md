@@ -204,3 +204,13 @@ Oldest first, one entry per closed decision, so **a new entry is appended to the
 
 **Companion.** #39. Follow-up: #60. Spec: `docs/SPEC.md`.
 
+## 2026-10-13: Viewing a shared form's settings needs no rule of its own (#57)
+
+**Decision.** No separate rule. Core authorizes the form settings screen on the `edit` ability (`FormsController::edit()` calls `authorize('edit', $form)`), and the #42 denial of `edit` to users who do not cover every assigned site therefore also hides the settings from them. The submissions page (`show()`, authorized on `view`) carries no email configuration.
+
+**Correction.** The #42 entry's residual says a scoped admin can still view a shared form's settings. That was wrong: denying `edit` already denies the settings screen.
+
+**Related finding.** The front-end `{{ form:create }}` tag exposes added config fields to templates as `form_config`, which would include every site's `site_overrides`; keeping them out is #62.
+
+**Companion.** #57. Related: #42, #62.
+
