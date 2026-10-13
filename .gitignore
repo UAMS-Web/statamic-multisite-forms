@@ -1,0 +1,7 @@
+/vendor
+/storage/phpstan
+.DS_Store
+.phpunit.result.cache
+.claude/worktrees/
+.claude/settings.local.json
+node_modules/
