@@ -85,7 +85,7 @@ So declaring editions later, with `free` first, leaves an install that never cho
 php artisan test vendor/uams-web/statamic-multisite-forms/tests/Feature/HostRegistersAddonTest.php
 ```
 
-`HostRegistersAddonTest` asserts that the host lists the add-on, registers its service provider and is multisite. `SitesConfigSectionTest` requests the form settings screen and its save endpoint as a super user, with form files in a temporary directory, so the host's own forms are never written. Run the whole directory with `php artisan test vendor/uams-web/statamic-multisite-forms/tests/Feature/`. The `host-only-behavior-needs-a-host-run` rule says when a run is required, and the `host-app-tests` skill covers claiming a slot and reading results.
+`HostRegistersAddonTest` asserts that the host lists the add-on, registers its service provider and is multisite. `SitesConfigSectionTest` requests the form settings screen and its save endpoint as a super user, with form files in a temporary directory, so the host's own forms are never written. `SubmitGateTest` posts to core's form submit route from a page on each site and checks the response and the stored submissions, with submissions in a temporary directory as well. Run the whole directory with `php artisan test vendor/uams-web/statamic-multisite-forms/tests/Feature/`. The `host-only-behavior-needs-a-host-run` rule says when a run is required, and the `host-app-tests` skill covers claiming a slot and reading results.
 
 ## Patch leakage
 

@@ -7,6 +7,7 @@ namespace UAMSWeb\MultisiteForms\Http\Middleware;
 use Closure;
 use Illuminate\Http\Request;
 use Illuminate\Routing\Route;
+use Illuminate\Support\Facades\Log;
 use Statamic\Forms\Form;
 use Symfony\Component\HttpFoundation\Response;
 use Symfony\Component\HttpKernel\Exception\NotFoundHttpException;
@@ -47,6 +48,12 @@ final class ResolveSubmittedForm
 
         $form = $route->parameter('form');
         if (! $form instanceof Form) {
+            // Core binds the form before this runs, so an unbound value means the
+            // gate ran too early; core's controller handles the request as before.
+            Log::warning('Multisite Forms did not gate a form submit by site: the form was not bound when the gate ran.', [
+                'form' => $route->originalParameter('form'),
+            ]);
+
             return $next($request);
         }
 

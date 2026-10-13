@@ -223,10 +223,23 @@ it('stays after route binding even when pushed before it', function (): void {
 });
 
 it('keeps the gate on the group when the kernel later copies its groups to the router again', function (): void {
-    // Any kernel middleware change re-copies the kernel's groups onto the router.
+    // The kernel's group, priority and alias setters re-copy its groups onto the router.
     httpKernel()->prependToMiddlewarePriority(SubstituteBindings::class);
 
     expect(routerGroup('web'))->toContain(ResolveSubmittedForm::class);
+});
+
+it('keeps middleware other code pushed onto the group through the router alone', function (): void {
+    $router = app(Router::class);
+    $router->pushMiddlewareToGroup('web', 'msf-pushed-by-the-host');
+    $router->middlewarePriority = [...$router->middlewarePriority, 'msf-priority-from-the-host'];
+
+    SubmitGate::register($router, httpKernel());
+
+    expect(routerGroup('web'))->toContain('msf-pushed-by-the-host')
+        ->and(routerGroup('web'))->toContain(ResolveSubmittedForm::class)
+        ->and(httpKernel()->getMiddlewareGroups()['web'] ?? [])->toContain('msf-pushed-by-the-host')
+        ->and($router->middlewarePriority)->toContain('msf-priority-from-the-host');
 });
 
 it('warns when the front-end route middleware names no group, so nothing is gated', function (): void {
@@ -303,7 +316,12 @@ it('passes a request with no route through', function (): void {
     expect($response->getContent())->toBe('ok');
 });
 
-it('passes the submit route through when its form was never bound', function (): void {
+it('passes the submit route through, with a warning, when its form was never bound', function (): void {
+    $warnings = loggedWarnings();
+    $context = null;
+    Event::listen(MessageLogged::class, function (MessageLogged $event) use (&$context): void {
+        $context = $event->context;
+    });
     submittableForm(['en']);
     $request = Request::create('http://localhost/!/forms/contact', 'POST', server: ['HTTP_REFERER' => 'http://localhost/es/']);
     $route = new Route('POST', '!/forms/{form}', fn (): string => '');
@@ -314,7 +332,10 @@ it('passes the submit route through when its form was never bound', function ():
         ->handle($request, fn (): Response => new Response('ok'));
 
     expect($response->getContent())->toBe('ok')
-        ->and($route->parameter('form'))->toBe('contact');
+        ->and($route->parameter('form'))->toBe('contact')
+        ->and($warnings)->toHaveCount(1)
+        ->and($warnings[0] ?? '')->toContain('the form was not bound')
+        ->and($context)->toBe(['form' => 'contact']);
 });
 
 it('passes any other route through without touching its form parameter', function (): void {

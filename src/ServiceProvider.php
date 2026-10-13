@@ -15,8 +15,8 @@ use UAMSWeb\MultisiteForms\Http\SubmitGate;
  *
  * The host application discovers it through `extra.laravel.providers` in
  * `composer.json`. It registers the Control Panel build, the Sites section of
- * the form settings screen, and the gate on core's form submit route; the rest is added as the phases in the add-on's
- * specification land.
+ * the form settings screen, and the gate on core's form submit route; the rest
+ * is added as the phases in the add-on's specification land.
  */
 class ServiceProvider extends AddonServiceProvider
 {
