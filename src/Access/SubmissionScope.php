@@ -13,6 +13,18 @@ use Statamic\Contracts\Forms\Submission;
 use Statamic\Contracts\Forms\SubmissionQueryBuilder;
 use Statamic\Events\FormDeleted;
 use Statamic\Events\FormDeleting;
+use Statamic\Events\FormSaved;
+use Statamic\Events\RoleDeleted;
+use Statamic\Events\RoleSaved;
+use Statamic\Events\SiteCreated;
+use Statamic\Events\SiteDeleted;
+use Statamic\Events\SiteSaved;
+use Statamic\Events\SubmissionDeleted;
+use Statamic\Events\SubmissionSaved;
+use Statamic\Events\UserDeleted;
+use Statamic\Events\UserGroupDeleted;
+use Statamic\Events\UserGroupSaved;
+use Statamic\Events\UserSaved;
 use Statamic\Facades\Form as FormFacade;
 use Statamic\Facades\User;
 use Statamic\Forms\Form;
@@ -39,6 +51,7 @@ use UAMSWeb\MultisiteForms\Forms\Assignment;
  * can sit inside a nested group, so the scope never puts `form` in a group. When
  * the user covers some forms but not others, it reads the ids of the unattributed
  * submissions of the covered forms with a top-level query, and keeps those ids.
+ * Those reads are made once per request and user, not once per builder (#123).
  *
  * Deleting a form deletes its submissions through the same builder, so between
  * core's `FormDeleting` and `FormDeleted` events the request reads unscoped; a
@@ -49,6 +62,30 @@ final class SubmissionScope
 {
     /** The request attribute set while a form and its submissions are deleted. */
     public const string DELETING = 'multisite-forms.deleting-form';
+
+    /** The request attribute that holds the scope's plan for the request (#123). */
+    public const string PLAN = 'multisite-forms.submission-scope';
+
+    // SubmissionScopeTest has a row per event that fails when its entry is removed,
+    // shown by hand (#123), but a constant is not an executable line, so the coverage
+    // driver links no test to these mutants and they are never run.
+    // @pest-mutate-ignore: RemoveArrayItem
+    /** The events of the writes that can change a plan: submissions, forms, sites and site access. */
+    public const array CHANGES = [
+        SubmissionSaved::class,
+        SubmissionDeleted::class,
+        FormSaved::class,
+        FormDeleted::class,
+        SiteCreated::class,
+        SiteSaved::class,
+        SiteDeleted::class,
+        RoleSaved::class,
+        RoleDeleted::class,
+        UserSaved::class,
+        UserDeleted::class,
+        UserGroupSaved::class,
+        UserGroupDeleted::class,
+    ];
 
     // SubmissionScopeTest fails when this default is true, shown by hand (#78), but a
     // property default is not an executable line, so the coverage driver links no
@@ -72,6 +109,10 @@ final class SubmissionScope
         Event::listen(FormDeleted::class, static function (): void {
             request()->attributes->remove(self::DELETING);
         });
+
+        Event::listen(self::CHANGES, static function (): void {
+            request()->attributes->remove(self::PLAN);
+        });
     }
 
     /**
@@ -92,9 +133,40 @@ final class SubmissionScope
             throw new LogicException('Cannot scope submissions by site: the bound submission query builder ['.$builder::class.'] extends neither of the core query builders.');
         }
 
-        self::scope($builder, SiteAccess::accessible($user), self::coveredForms($user));
+        self::scope($builder, self::plan($user));
 
         return $builder;
+    }
+
+    /**
+     * The sites, the coverage and the unattributed ids the scope applies for a user,
+     * worked out once per request.
+     *
+     * The forms index resolves a builder per form for its counts, and reading the
+     * ids for each one made that page's cost grow with the number of forms times
+     * the number of unattributed submissions: measured in the host at 60 forms of
+     * 200 unattributed submissions, 6.9s for a user covering some forms against
+     * 0.57s for a super user (#123). Any write that dispatches an event that could
+     * change the plan drops it, so a delete or a save in the same request is read
+     * afresh.
+     */
+    private static function plan(UserContract $user): ScopePlan
+    {
+        $plan = request()->attributes->get(self::PLAN);
+        if ($plan instanceof ScopePlan && $plan->user === $user->getAuthIdentifier()) {
+            return $plan;
+        }
+
+        $covered = self::coveredForms($user);
+        $plan = new ScopePlan(
+            $user->getAuthIdentifier(),
+            SiteAccess::accessible($user),
+            $covered['all'],
+            $covered['all'] ? [] : self::unattributedIds($covered['handles'], $covered['others']),
+        );
+        request()->attributes->set(self::PLAN, $plan);
+
+        return $plan;
     }
 
     /**
@@ -133,18 +205,13 @@ final class SubmissionScope
      * Keep submissions of the given sites, and unattributed ones of the covered forms.
      *
      * When the user covers every form, an unattributed submission is kept outright
-     * rather than by id, which saves reading every unattributed id on each request.
-     *
-     * @param  list<string>  $sites
-     * @param  array{all: bool, handles: list<mixed>, others: list<mixed>}  $covered
+     * rather than by id, and the plan reads no ids.
      */
-    private static function scope(Builder|EloquentQueryBuilder $builder, array $sites, array $covered): void
+    private static function scope(Builder|EloquentQueryBuilder $builder, ScopePlan $plan): void
     {
-        // Falling through from this branch adds the id rule over every form, which keeps
-        // the same submissions; the branch only saves reading the ids, so removing its
-        // return is equivalent.
-        // @pest-mutate-ignore: RemoveEarlyReturn
-        if ($covered['all']) {
+        $sites = $plan->sites;
+
+        if ($plan->all) {
             $builder->where(static function (Builder|EloquentQueryBuilder $query) use ($sites): void {
                 $query->whereIn('_site', $sites);
                 $query->orWhereNull('_site');
@@ -153,7 +220,7 @@ final class SubmissionScope
             return;
         }
 
-        $unattributed = self::unattributedIds($covered['handles'], $covered['others']);
+        $unattributed = $plan->ids;
 
         $builder->where(static function (Builder|EloquentQueryBuilder $query) use ($sites, $unattributed): void {
             $query->whereIn('_site', $sites);
@@ -172,10 +239,6 @@ final class SubmissionScope
      */
     private static function coveredForms(UserContract $user): array
     {
-        // Starting from false sends every user down the id rule, which keeps the same
-        // submissions as the null rule when every form is covered, so TrueToFalse is
-        // equivalent; scope() explains why the null rule is kept.
-        // @pest-mutate-ignore: TrueToFalse
         $all = true;
         $handles = [];
         $others = [];
@@ -202,11 +265,13 @@ final class SubmissionScope
 
     /**
      * The ids of the submissions with no `_site` in the given forms, less any id a
-     * submission of one of the other forms also carries.
+     * submission of one of the other forms, or an attributed submission of one of
+     * the given forms, also carries.
      *
      * An id is not unique across forms (it is the submission's file name, and a
-     * copied or imported file can repeat one), and the id rule is not tied to a
-     * form, so an id shared with a form the user does not cover is dropped.
+     * copied or imported file can repeat one), and the id rule is not tied to a form
+     * or a site, so an id shared with any submission the rule should not reach is
+     * dropped, which hides the unattributed submission too.
      *
      * @param  list<mixed>  $forms
      * @param  list<mixed>  $others
@@ -229,17 +294,31 @@ final class SubmissionScope
                 $query->whereNull('_site');
             });
 
-            if ($ids === [] || $others === []) {
+            // Without this return, both reads below match no id and the result is the
+            // same empty list; it only saves the reads, so removing it is equivalent.
+            // @pest-mutate-ignore: RemoveEarlyReturn
+            if ($ids === []) {
                 return $ids;
             }
 
-            // Without the id condition the read returns every id of the other forms, which
-            // drops the same ids; the condition only narrows the read, so removing it is
-            // equivalent.
+            // The id rule keeps any submission with one of these ids, so an id that an
+            // attributed submission of a covered form also carries would show that one
+            // whatever its site (#123). Without the id condition the read returns every
+            // attributed id of those forms, which drops the same ids; the condition only
+            // narrows the read, so removing it is equivalent.
             // @pest-mutate-ignore: RemoveMethodCall
-            $shared = self::idsOf($others, static function (Builder|EloquentQueryBuilder $query) use ($ids): void {
+            $shared = self::idsOf($forms, static function (Builder|EloquentQueryBuilder $query) use ($ids): void {
+                $query->whereNotNull('_site');
                 $query->whereIn('id', $ids);
             });
+
+            if ($others !== []) {
+                // As above for the other forms, whatever their submissions' sites.
+                // @pest-mutate-ignore: RemoveMethodCall
+                $shared = [...$shared, ...self::idsOf($others, static function (Builder|EloquentQueryBuilder $query) use ($ids): void {
+                    $query->whereIn('id', $ids);
+                })];
+            }
 
             return array_filter($ids, static fn (mixed $id): bool => ! in_array($id, $shared, true));
         } finally {

@@ -9,11 +9,30 @@ use Mockery\MockInterface;
 use Statamic\Auth\File\User as UserObject;
 use Statamic\Contracts\Forms\Submission;
 use Statamic\Contracts\Forms\SubmissionQueryBuilder;
+use Statamic\Events\FormDeleted;
+use Statamic\Events\FormSaved;
+use Statamic\Events\RoleDeleted;
+use Statamic\Events\RoleSaved;
+use Statamic\Events\SiteCreated;
+use Statamic\Events\SiteDeleted;
+use Statamic\Events\SiteSaved;
+use Statamic\Events\SubmissionDeleted;
+use Statamic\Events\SubmissionSaved;
+use Statamic\Events\UserDeleted;
+use Statamic\Events\UserGroupDeleted;
+use Statamic\Events\UserGroupSaved;
+use Statamic\Events\UserSaved;
 use Statamic\Facades\Form as FormFacade;
 use Statamic\Facades\FormSubmission;
+use Statamic\Facades\Role;
+use Statamic\Facades\Site;
 use Statamic\Facades\Stache;
+use Statamic\Facades\User;
+use Statamic\Facades\UserGroup;
 use Statamic\Forms\Form;
+use Statamic\Forms\Submission as SubmissionObject;
 use Statamic\Query\EloquentQueryBuilder;
+use Statamic\Sites\Site as SiteObject;
 use Statamic\Stache\Query\SubmissionQueryBuilder as StacheSubmissionQueryBuilder;
 use Statamic\Stache\Stores\Store;
 use Statamic\Statamic;
@@ -498,3 +517,151 @@ it('scopes a Control Panel listing reached through a URL-encoded path', function
     'an encoded letter' => ['/%63p/forms/shared/submissions'],
     'an encoded slash' => ['/cp%2Fforms/shared/submissions'],
 ]);
+
+/**
+ * Save an unattributed submission to the es-only form without dispatching events,
+ * so nothing tells the scope its plan is out of date.
+ */
+function quietlySaveUnattributed(): void
+{
+    $spanish = FormFacade::find('spanish');
+    if (! $spanish instanceof Form) {
+        throw new RuntimeException('No [spanish] form.');
+    }
+
+    $submission = $spanish->makeSubmission();
+    if (! $submission instanceof SubmissionObject) {
+        throw new RuntimeException('The form did not make a submission.');
+    }
+
+    $submission->id('quiet-unattributed');
+    $submission->set('name', 'quiet');
+    $submission->saveQuietly();
+}
+
+/**
+ * The es site.
+ *
+ * @throws RuntimeException When there is no es site.
+ */
+function spanishSite(): SiteObject
+{
+    $site = Site::get('es');
+    if (! $site instanceof SiteObject) {
+        throw new RuntimeException('No [es] site.');
+    }
+
+    return $site;
+}
+
+it('reads the unattributed ids once per request, and afresh in the next', function (): void {
+    $this->actingAs(scopeUser('es-only', ['es']));
+    onPath('/cp/forms');
+
+    $before = submissionsOf(['spanish'])->count();
+    quietlySaveUnattributed();
+    $same = submissionsOf(['spanish'])->count();
+
+    onPath('/cp/forms');
+
+    expect([$before, $same, submissionsOf(['spanish'])->count()])->toBe([2, 2, 3]);
+});
+
+it('reads the unattributed ids afresh after a write that can change them in the same request', function (Closure $event): void {
+    $this->actingAs(scopeUser('es-only', ['es']));
+    onPath('/cp/forms');
+
+    $before = submissionsOf(['spanish'])->count();
+    quietlySaveUnattributed();
+    event($event());
+
+    expect([$before, submissionsOf(['spanish'])->count()])->toBe([2, 3]);
+})->with([
+    'a submission saved' => [static fn (): object => new SubmissionSaved(FormSubmission::make())],
+    'a submission deleted' => [static fn (): object => new SubmissionDeleted(FormSubmission::make())],
+    'a form saved' => [static fn (): object => new FormSaved(FormFacade::make('other'))],
+    'a form deleted' => [static fn (): object => new FormDeleted(FormFacade::make('other'))],
+    'a site created' => [static fn (): object => new SiteCreated(spanishSite())],
+    'a site saved' => [static fn (): object => new SiteSaved(spanishSite())],
+    'a site deleted' => [static fn (): object => new SiteDeleted(spanishSite())],
+    'a role saved' => [static fn (): object => new RoleSaved(Role::make('other'))],
+    'a role deleted' => [static fn (): object => new RoleDeleted(Role::make('other'))],
+    'a user saved' => [static fn (): object => new UserSaved(User::make())],
+    'a user deleted' => [static fn (): object => new UserDeleted(User::make())],
+    'a user group saved' => [static fn (): object => new UserGroupSaved(UserGroup::make())],
+    'a user group deleted' => [static fn (): object => new UserGroupDeleted(UserGroup::make())],
+]);
+
+it('keeps the plan of one user from another in the same request', function (): void {
+    onPath('/cp/forms');
+
+    $this->actingAs(scopeUser('es-only', ['es']));
+    $spanish = submissionsOf(['shared'])->count();
+
+    $this->actingAs(scopeUser('both', ['en', 'es']));
+
+    expect([$spanish, submissionsOf(['shared'])->count()])->toBe([1, 3]);
+});
+
+/**
+ * Make a form for the given sites holding one unattributed submission with the given id.
+ *
+ * @param  list<string>  $sites
+ */
+function formWithUnattributed(string $handle, array $sites, string $id): void
+{
+    $form = FormFacade::make($handle);
+    if (! $form instanceof Form) {
+        throw new RuntimeException('The forms repository did not make a form.');
+    }
+
+    $form->title(ucfirst($handle));
+    $form->set('sites', $sites);
+    $form->save();
+
+    $submission = $form->makeSubmission();
+    $submission->id($id);
+    $submission->set('name', 'collision');
+    $submission->save();
+}
+
+it('drops an unattributed id that a submission of another site in a covered form also carries', function (): void {
+    // The es-only form keeps the en submission it was saved with; a second es-only
+    // form's unattributed submission carries the same id, as a copied file can
+    formWithUnattributed('spanish_copy', ['es'], scopeSubmissionId('spanish', 'en'));
+
+    $this->actingAs(scopeUser('es-only', ['es']));
+
+    expect(listedNames($this, 'spanish'))->toBe(['es', 'none']);
+});
+
+it('keeps an unattributed submission whose id another site carries when the user covers every form', function (): void {
+    foreach (['shared', 'everywhere'] as $handle) {
+        $form = FormFacade::find($handle);
+        if (! $form instanceof Form) {
+            throw new RuntimeException("No [{$handle}] form.");
+        }
+
+        $form->delete();
+    }
+
+    formWithUnattributed('spanish_copy', ['es'], scopeSubmissionId('spanish', 'en'));
+
+    $this->actingAs(scopeUser('es-only', ['es']));
+    onPath('/cp/forms');
+
+    expect(submissionsOf(['spanish_copy'])->count())->toBe(1);
+});
+
+it('hides a submission moved to another site in the same request', function (): void {
+    $submission = FormSubmission::find(scopeSubmissionId('spanish', null));
+
+    $this->actingAs(scopeUser('es-only', ['es']));
+    onPath('/cp/forms');
+
+    $before = submissionsOf(['spanish'])->count();
+    $submission->set('_site', 'en');
+    $submission->save();
+
+    expect([$before, submissionsOf(['spanish'])->count()])->toBe([2, 1]);
+});
