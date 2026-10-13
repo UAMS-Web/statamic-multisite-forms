@@ -61,9 +61,16 @@ final class Overrides
      * would mail people nobody named for that site. Store is read as a boolean
      * written by hand or as the `'true'` or `'false'` the editor's button group
      * saves; anything else falls back to the base form's.
+     *
+     * The rows themselves are removed from the view, whatever site it is for.
+     * Templates receive the view's data as `form_config`, and the rows hold every
+     * site's recipients; the view carries its own site's values as its title,
+     * email and store instead. The rows stay on the base form (#62).
      */
     public static function apply(SiteForm $view): void
     {
+        $view->remove(self::KEY);
+
         $row = self::rowFor($view->base(), $view->site());
 
         if ($row === null) {

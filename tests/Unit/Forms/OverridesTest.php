@@ -159,3 +159,13 @@ it('finds no row for a site the overrides do not name', function (): void {
     expect(Overrides::rowFor(overriddenForm([['site' => 'es', 'title' => 'Contacto']]), 'en'))->toBeNull()
         ->and(Overrides::rowFor(overriddenForm([['site' => 'es', 'title' => 'Contacto']]), 'es'))->toBe(['site' => 'es', 'title' => 'Contacto']);
 });
+
+it('removes the rows from the view and keeps them on the base form (#62)', function (string $site): void {
+    $rows = [['site' => 'es', 'title' => 'Contacto', 'email' => [['to' => 'es@example.com']]]];
+    $base = overriddenForm($rows);
+
+    $view = overriddenView($base, $site);
+
+    expect($view->get(Overrides::KEY))->toBeNull()
+        ->and($base->get(Overrides::KEY))->toBe($rows);
+})->with(['the site with a row' => ['es'], 'a site without one' => ['en']]);
