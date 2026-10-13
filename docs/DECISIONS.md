@@ -188,7 +188,7 @@ Oldest first, one entry per closed decision, so **a new entry is appended to the
 
 **Rejected.** Shipping the Site filter in the first release: reasonable, but unexercised. A switcher that follows the Control Panel's selected site (`Site::selected()`): it needs changes to core's Vue pages, the upgrade-fragile surface the spec avoids.
 
-**Cost.** Until #58 shipped, a user with access to several sites sees their submissions mixed in one listing.
+**Cost.** Until #58 ships, a user with access to several sites sees their submissions mixed in one listing.
 
 **Companion.** #41. Follow-up: #58. Spec: `docs/SPEC.md`.
 
@@ -368,7 +368,7 @@ Oldest first, one entry per closed decision, so **a new entry is appended to the
 
 ## 2026-10-13: The submissions Site filter offers the user's sites the form is assigned to (#58)
 
-**Decision.** `UAMSWeb\MultisiteForms\Query\Scopes\Filters\SubmissionSite`, registered by Statamic from `src/Query/Scopes/Filters`, is a filter on the `form-submissions` listing with the handle `submission_site`. It narrows the query by `_site` to one site. It offers the sites the user can access that the form is assigned to (every site, for a form with no sites), and is visible only when that leaves at least two. A chosen site leaves out submissions with no recorded site; with none chosen, the submission scope (#78) decides as before. A site handle the filter does not offer is applied as given, so it finds no submission the user can see rather than lifting the filter.
+**Decision.** `UAMSWeb\MultisiteForms\Query\Scopes\Filters\SubmissionSite`, registered by Statamic from `src/Query/Scopes/Filters`, is a filter on the `form-submissions` listing with the handle `submission_site`. It narrows the query by `_site` to one site. It offers the sites the user can access that the form is assigned to (every site, for a form with no sites), and is visible only when that leaves at least two. A chosen site leaves out submissions with no recorded site; with none chosen, the submission scope (#78) decides as before. A site handle the filter does not offer is applied as given, so it finds no submission the user can see rather than lifting the filter. Its badge names only an offered site, and shows any other by its handle, since core returns the badge for whatever handle a request names; site names are translated, as core's entries filter translates them.
 
 **Why.** Core's listing and export both apply the filters a request names, so one filter class narrows both and needs no change to core's pages. Offering only sites both reachable by the user and covered by the form keeps the choice to sites that can hold visible submissions.
 

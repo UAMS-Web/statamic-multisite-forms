@@ -90,7 +90,11 @@ final class SubmissionSite extends Filter
     }
 
     /**
-     * The active-filter badge: the chosen site's name.
+     * The active-filter badge: the chosen site's name, or none when no site is chosen.
+     *
+     * Core returns the badge for any handle a request names, so a site the filter
+     * does not offer shows by its handle: its name is withheld, as the Control Panel
+     * withholds the sites a user cannot access.
      *
      * @param  mixed  $values
      */
@@ -98,8 +102,11 @@ final class SubmissionSite extends Filter
     public function badge($values): string
     {
         $site = self::chosen($values);
+        if ($site === null) {
+            return '';
+        }
 
-        return self::label().': '.($site === null ? '' : self::nameOf($site));
+        return self::label().': '.($this->options()[$site] ?? $site);
     }
 
     /**
@@ -116,10 +123,16 @@ final class SubmissionSite extends Filter
             return [];
         }
 
+        $accessible = SiteAccess::accessible($user);
+
+        // The facade declares `mixed`; core's Sites::all() is a collection of sites keyed by handle
+        /** @var iterable<string, SiteObject> $sites */
+        $sites = Site::all();
+
         $options = [];
-        foreach (SiteAccess::accessible($user) as $site) {
-            if (Assignment::covers($form, $site)) {
-                $options[$site] = self::nameOf($site);
+        foreach ($sites as $handle => $site) {
+            if (in_array($handle, $accessible, true) && Assignment::covers($form, $site)) {
+                $options[$handle] = self::nameOf($handle, $site);
             }
         }
 
@@ -137,12 +150,11 @@ final class SubmissionSite extends Filter
     }
 
     /**
-     * A configured site's name, or the handle itself for a site no longer configured.
+     * A site's translated name, as core's entries filter shows it.
      */
-    private static function nameOf(string $handle): string
+    private static function nameOf(string $handle, SiteObject $site): string
     {
-        $site = Site::get($handle);
-        $name = $site instanceof SiteObject ? $site->name() : null;
+        $name = __($site->name());
 
         return is_string($name) ? $name : $handle;
     }

@@ -285,16 +285,45 @@ it('translates its title, field label and badge', function (): void {
 
     expect(SubmissionSite::title())->toBe('Sitio')
         ->and(data_get(siteFilterFor('shared')->toArray(), 'fields.0.display'))->toBe('Sitio')
-        ->and((new SubmissionSite)->badge(['site' => 'es']))->toBe('Sitio: Spanish');
+        ->and(siteFilterFor('shared')->badge(['site' => 'es']))->toBe('Sitio: Spanish');
 });
 
-it('names the chosen site in its badge', function (mixed $values, string $badge): void {
-    expect((new SubmissionSite)->badge($values))->toBe($badge);
+it('translates the site names it offers and shows', function (): void {
+    app('translator')->addLines(['*.Spanish' => 'Español'], 'es');
+    app()->setLocale('es');
+    $this->actingAs(filterUser('both', 'en', 'es'));
+
+    expect(data_get(siteFilterFor('shared')->toArray(), 'fields.0.options'))->toBe(['en' => 'English', 'es' => 'Español'])
+        ->and(siteFilterFor('shared')->badge(['site' => 'es']))->toBe('Site: Español');
+});
+
+it('names an offered site in its badge, and only the handle of any other', function (mixed $values, string $badge): void {
+    $this->actingAs(filterUser('es-only', 'es'));
+
+    expect(siteFilterFor('everywhere')->badge($values))->toBe($badge);
 })->with([
-    'a configured site' => [['site' => 'es'], 'Site: Spanish'],
+    'a site the user can access' => [['site' => 'es'], 'Site: Spanish'],
+    'a site the user cannot access' => [['site' => 'en'], 'Site: en'],
     'an unknown handle' => [['site' => 'gone'], 'Site: gone'],
-    'no site' => [[], 'Site: '],
 ]);
+
+it('shows no badge when the value names no site', function (mixed $values): void {
+    $this->actingAs(filterUser('both', 'en', 'es'));
+
+    expect(siteFilterFor('shared')->badge($values))->toBe('');
+})->with([
+    'no site' => [[]],
+    'an empty site' => [['site' => '']],
+    'not a list' => ['en'],
+]);
+
+it('does not name an inaccessible site in the badge the listing returns', function (): void {
+    $this->actingAs(filterUser('es-only', 'es'));
+
+    $response = $this->getJson(filterUrl('forms.submissions.index', 'everywhere', ['submission_site' => ['site' => 'en']]))->assertOk();
+
+    expect($response->json('meta.activeFilterBadges'))->toBe(['submission_site' => 'Site: en']);
+});
 
 it("is registered under its own handle, beside core's entries site filter", function (): void {
     expect(Scope::find('submission_site'))->toBeInstanceOf(SubmissionSite::class)

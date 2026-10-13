@@ -130,4 +130,18 @@ final class SubmissionSiteScopeTest extends TestCase
         $this->assertSame([$this->ids['en']], array_column($listed, 'id'));
         $this->assertSame([$this->ids['en']], array_column($exported, 'id'));
     }
+
+    /** For a user scoped to es, the filter narrows within the scope and never past it (#58). */
+    public function test_the_site_filter_stays_inside_the_scope(): void
+    {
+        $this->actingAs($this->spanishReader());
+        $url = cp_route('forms.submissions.index', 'msf_host_scoped').'?filters=';
+
+        $spanish = $this->getJson($url.base64_encode((string) json_encode(['submission_site' => ['site' => 'es']])))->assertOk();
+        $english = $this->getJson($url.base64_encode((string) json_encode(['submission_site' => ['site' => 'en']])))->assertOk();
+
+        $this->assertSame([$this->ids['es']], array_column($spanish->json('data'), 'id'));
+        $this->assertSame([], array_column($english->json('data'), 'id'));
+        $this->assertSame(['submission_site' => 'Site: en'], $english->json('meta.activeFilterBadges'));
+    }
 }
