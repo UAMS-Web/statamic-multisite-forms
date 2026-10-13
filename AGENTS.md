@@ -11,7 +11,7 @@ A Statamic add-on (`uams-web/statamic-multisite-forms`, namespace `UAMSWeb\Multi
 ### Commands
 
 - `composer install`: installs dependencies and applies the `patches/` set to `pestphp/pest-plugin-mutate` (temporary, Windows-safe mutation testing; see `upstream-patch-lifecycle`).
-- `composer ci`: the gate, run in cost order and stopping at the first failure: `test:pint`, `test:refactor` (Rector dry run), `stan` (Larastan), `test` (Pest `Unit` and `Integration`). GitHub Actions runs the same scripts as separate chained jobs (`.github/workflows/ci.yml`), plus `composer validate` and the synced-files check; change a script and its job together.
+- `composer ci`: the gate, run in cost order and stopping at the first failure: `test:pint`, `test:refactor` (Rector dry run), `stan` (Larastan), `test` (Pest `Unit` and `Integration`, run in parallel through the bundled paratest; `composer test:serial` runs the same suites in one process, which is the first thing to try when a failure looks order-dependent). GitHub Actions runs the same scripts as separate chained jobs (`.github/workflows/ci.yml`), plus `composer validate` and the synced-files check; change a script and its job together.
 - `composer pint` and `composer refactor` apply formatting and the gating Rector profile; `composer refactor:sweep` runs the deliberate sweep profile.
 - `composer mutate`: Pest mutation testing over `src/`. Read `pcov-setup` before trusting a score.
 
@@ -19,6 +19,7 @@ A Statamic add-on (`uams-web/statamic-multisite-forms`, namespace `UAMSWeb\Multi
 
 - `src/` holds the add-on (PHP floor `^8.4`, `statamic/cms` `^6.35`); `tests/Unit` boots nothing, `tests/Integration` boots a minimal Statamic through Testbench (`tests/TestCase.php`).
 - Host-bound tests belong in `tests/Feature/` and are not part of `composer ci`; the `host-only-behavior-needs-a-host-run` rule says when a host run is required.
+- Tests run in parallel workers, so a test must not share mutable state with another: no fixed file paths, cache keys or Stache/form storage directories. Give each worker its own directory (`ParallelTesting::token()` or `uniqid()`) when a test writes files.
 - The static-analysis cache lives in `storage/phpstan` (git-ignored).
 
 <!-- uams-claude-skills:begin -->
