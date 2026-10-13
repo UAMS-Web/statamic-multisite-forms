@@ -50,6 +50,10 @@ php artisan tinker --execute='echo \Statamic\Facades\Addon::all()->map->package(
 
 The Control Panel page `/cp/addons` was requested in process as a temporary super user against this host: HTTP 200, and the page data lists one add-on, `Multisite Forms`, with the version of the checked-out branch. A browser run of the same page has not been done.
 
+## Control Panel assets
+
+`npm run build` writes the production build to `resources/dist`, which is committed. In the host, `php artisan vendor:publish --tag=statamic-multisite-forms --force` copies `resources/dist/build` to `public/vendor/statamic-multisite-forms/build`, and `statamic:install` does the same after a `composer update`. Measured on Windows 11: after publishing, the `/cp/addons` page (requested in process) references both `cp-<hash>.js` and `cp-<hash>.css` under `/vendor/statamic-multisite-forms/build/assets/`. `npm ci` needs `vendor/statamic/cms`, because `@statamic/cms` is a `file:` link into it, so run `composer install` first.
+
 ## Running the host-bound tests
 
 `tests/Feature/` holds tests that extend the host's `Tests\TestCase`. They are not part of `composer ci`: the package has no `Feature` suite and PHPStan excludes the directory, because `Tests\TestCase` does not exist in this package. From the host root:
