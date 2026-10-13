@@ -7,6 +7,7 @@ use Illuminate\Routing\Events\PreparingResponse;
 use Illuminate\Routing\Route;
 use Illuminate\Support\Facades\File;
 use Illuminate\Testing\TestResponse;
+use Inertia\Inertia;
 use Inertia\Response as InertiaResponse;
 use Inertia\Testing\AssertableInertia;
 use Statamic\Facades\Form as FormFacade;
@@ -111,8 +112,27 @@ it('links only the forms whose editor the user may open', function (array $sites
 it('links every other form for a user who may open every editor', function (string $kind): void {
     $this->actingAs($kind === 'super' ? superUser() : userWith('fields-both', ['access cp', 'configure form fields', 'access en site', 'access es site']));
 
-    expect(linkedTitles(fieldsEditorPage('spanish')))->toBe(['Title of english', 'Title of everywhere', 'Title of shared']);
+    $response = fieldsEditorPage('spanish');
+
+    // The positive control for the HTML assertion above: the title is in the page when allowed
+    expect(linkedTitles($response))->toBe(['Title of english', 'Title of everywhere', 'Title of shared'])
+        ->and($response->getContent())->toContain('Title of english');
 })->with(['a super user' => ['super'], 'a user with both sites' => ['both']]);
+
+it('filters the breadcrumb on an Inertia visit as on a full page load', function (): void {
+    $this->actingAs(userWith('fields-es', ['access cp', 'configure form fields', 'access es site']));
+    $url = cp_route('blueprints.forms.edit', 'spanish');
+    if (! is_string($url)) {
+        throw new RuntimeException('The fields editor route did not resolve.');
+    }
+
+    $version = Inertia::getVersion();
+    $crumbs = $this->get($url, ['X-Inertia' => 'true', 'X-Inertia-Version' => $version])->assertOk()->json('props.'.BlueprintBreadcrumbs::PROP);
+
+    expect($crumbs)->toBeArray()
+        ->and(json_encode($crumbs))->not->toContain('Title of english')
+        ->and(json_encode($crumbs))->toContain('Title of spanish');
+});
 
 it('keeps the current form and the forms crumb, and every link that names no fields editor', function (): void {
     $this->actingAs(userWith('fields-es', ['access cp', 'configure form fields', 'access es site']));
@@ -149,11 +169,11 @@ it('leaves every other response alone', function (?string $routeName, bool $iner
         $request->setRouteResolver(static fn (): Route => $route);
     }
 
-    $response = $inertia ? new InertiaResponse('Page', [], ['additionalBreadcrumbs' => 'shared'], 'app') : new Response('plain');
+    $response = $inertia ? new InertiaResponse('Page', [], ['additionalBreadcrumbs' => 'as given'], 'app') : new Response('plain');
     BlueprintBreadcrumbs::preparing(new PreparingResponse($request, $response));
 
     $props = $inertia ? new ReflectionProperty(InertiaResponse::class, 'props')->getValue($response) : null;
-    expect($props)->toBe($inertia ? ['additionalBreadcrumbs' => 'shared'] : null);
+    expect($props)->toBe($inertia ? ['additionalBreadcrumbs' => 'as given'] : null);
 })->with([
     'an Inertia page on another route' => ['statamic.cp.forms.edit', true],
     'an Inertia page with no route' => [null, true],
@@ -161,10 +181,10 @@ it('leaves every other response alone', function (?string $routeName, bool $iner
 ]);
 
 it('leaves a response alone whose request is not a Laravel request', function (): void {
-    $response = new InertiaResponse('Page', [], ['additionalBreadcrumbs' => 'shared'], 'app');
+    $response = new InertiaResponse('Page', [], ['additionalBreadcrumbs' => 'as given'], 'app');
     BlueprintBreadcrumbs::preparing(new PreparingResponse(SymfonyRequest::create('/cp/fields/blueprints/forms/spanish/edit'), $response));
 
-    expect(new ReflectionProperty(InertiaResponse::class, 'props')->getValue($response))->toBe(['additionalBreadcrumbs' => 'shared']);
+    expect(new ReflectionProperty(InertiaResponse::class, 'props')->getValue($response))->toBe(['additionalBreadcrumbs' => 'as given']);
 });
 
 it('listens for responses being prepared', function (): void {
