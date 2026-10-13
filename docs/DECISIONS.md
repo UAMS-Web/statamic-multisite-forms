@@ -46,6 +46,8 @@ Oldest first, one entry per closed decision, so **a new entry is appended to the
 
 **Companion.** Commit history on `set-up-dev-tooling`.
 
+**Superseded** by "CI jobs run in parallel" below.
+
 ## 2026-10-11: Local patches to pest-plugin-mutate are temporary (repository setup)
 
 **Decision.** Seven patches under `patches/` are applied to `pestphp/pest-plugin-mutate` through `cweagans/composer-patches`, so mutation runs are trustworthy on Windows.
@@ -66,3 +68,14 @@ Oldest first, one entry per closed decision, so **a new entry is appended to the
 
 **Companion.** #13.
 
+## 2026-10-12: CI jobs run in parallel (#20)
+
+**Decision.** No job in `ci.yml` declares `needs:`; every job, the `Compatibility` legs included, starts at once. Job names are unchanged, so the required-checks ruleset is unaffected. `composer ci` keeps its cost order locally.
+
+**Why.** The chain exists in `UAMS-Web/uams-statamic` to protect a private repository's Actions minutes budget, and the entry above never recorded that reason. This repository is public, where standard runners are free, so the early exit saves nothing and the chain costs wall-clock time and shows failures one job at a time.
+
+**Rejected.** Keeping the chain: it spends time to save a budget that does not exist here. Chaining only the cheap gates: a smaller version of the same cost for a saving of free minutes. Reverting to a chain is cheap if the repository ever goes private.
+
+**Trade.** More concurrent runner use per push, and a pull request that fails an early job still runs the expensive ones.
+
+**Companion.** #20.
