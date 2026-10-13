@@ -109,8 +109,9 @@ New submissions store the site in the data under `_site`. Core's store, indexes 
 
 No Control Panel view is replaced.
 
-- **Form visibility.** Core's index keeps only forms the user `can('view')`. The add-on adds a gate callback on the form and submission abilities: a form with a non-empty `sites` list is denied to a user who has no `access {site} site` for any assigned site. Super users are untouched. The index therefore scopes itself.
+- **Form visibility.** Core's index keeps only forms the user `can('view')`. The add-on registers a global `Gate::before()` callback on the form and submission abilities: a form with a non-empty `sites` list is denied to a non-super user who has no `access {site} site` for any assigned site, and the callback returns nothing otherwise. It has to be a `before` callback: core's form policies return true from their own `before()` for `configure forms`, and Laravel's `Gate` lets an `after` callback change only a null result (`Illuminate/Auth/Access/Gate.php`, `callAfterCallbacks()`). Super users are untouched. The index therefore scopes itself.
 - **Submission visibility.** A user sees submissions whose `_site` is a site they can access, and unattributed submissions only when they can access every site the form is assigned to (all sites for a global form; #40). Every Control Panel read goes through `Form::querySubmissions()` or `FormSubmission::find()`, which resolve to the container-bound `SubmissionQueryBuilder` contract. The add-on decorates that contract with `app()->extend()`, adding the site scope through the public query API, so the listing, detail view, delete, export and the forms index count are scoped without replacing a controller or core's builder class (spike 4, decided in #49). The scope applies only to Control Panel requests by non-super users, because the same builder serves the API and the `{{ form:submissions }}` tag.
+- **`configure forms` does not bypass the scope.** A non-super user with `configure forms` is scoped to their accessible sites like any other non-super user, for forms and submissions (#54). Only super users see every site. This narrows what core allows that permission, and the release notes say so.
 - **Permissions.** No new keys. Per-site access is the intersection of a core form permission and a core site permission, so an administrator already has the controls. This differs from per-form-per-site keys on purpose: it is less expressive and far less to keep correct. If per-form-per-site grants are demanded, they are an addition.
 - **Site selector.** Core's Control Panel already tracks a selected site. Making the forms index filter by the *selected* site, instead of by access, needs UI and is deferred.
 
@@ -126,7 +127,7 @@ None added in the first release. Core's `FormSubmitted`, `SubmissionSaved`, `For
 | The Control Panel config screen changes how added sections render. | Only `appendConfigFields` is used; the host-bound test loads the screen. |
 | The resolved view leaks into a save. | It refuses `save()` and `delete()`; a unit test asserts both throw. |
 | The submit middleware runs before or after route binding differently across versions. | Test in the host on the lowest and latest supported version. |
-| A site-denying gate callback conflicts with core's policy `before`. | Super users and `configure forms` pass before the callback; tests cover each. |
+| A site-denying gate callback is overridden by core's policy `before`, which returns true for `configure forms`. | The callback is a global `Gate::before()`, which Laravel runs before any policy (`Gate::raw()`); it returns nothing for super users and for allowed sites. Tests cover a super user, a `configure forms` user and a plain viewer. |
 | `_site` collides with a user field. | Underscore-prefixed keys are core's parameter namespace and cannot be blueprint handles. |
 
 ## Phasing
@@ -154,6 +155,7 @@ Each phase ends with a host-bound test run in `statamic-multisite-forms-host` (`
 - [ ] Default for `not_assigned`: `empty` with a warning (proposed) or `404`.
 - [x] Who sees unattributed submissions. Decided: only users who can access every site the form is assigned to (#40, `docs/DECISIONS.md`).
 - [ ] Is access-based scoping (proposed) enough for the first release, or is a selected-site filter on the forms index required?
+- [x] Whether `configure forms` bypasses the site scope. Decided: it does not; only super users do (#54, `docs/DECISIONS.md`).
 - [ ] Who may assign a form to a site: anyone who can edit the form (proposed), or only users with access to every site being added.
 - [x] Submissions as a flat store with `_site` or a folder per site. Decided: flat store with `_site` (#43, `docs/DECISIONS.md`).
 - [x] How submissions are scoped by site in the Control Panel. Decided: decorate the `SubmissionQueryBuilder` contract with `app()->extend()` (#49, `docs/DECISIONS.md`).
