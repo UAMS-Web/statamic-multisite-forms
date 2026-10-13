@@ -55,6 +55,16 @@ final class SiteAccess
     }
 
     /**
+     * The handles of the configured sites the user can access, in configured order.
+     *
+     * @return list<string>
+     */
+    public static function accessible(User $user): array
+    {
+        return array_values(array_filter(self::allHandles(), fn (string $handle): bool => self::canAccess($user, $handle)));
+    }
+
+    /**
      * The handles of every configured site.
      *
      * @return list<string>

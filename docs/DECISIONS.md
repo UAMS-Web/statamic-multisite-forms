@@ -313,6 +313,19 @@ Oldest first, one entry per closed decision, so **a new entry is appended to the
 
 **Rejected.** Applying the every-site rule to `edit` only, as #77's summary words it: a user who may not edit a shared form could still delete it for every site. Treating a removed site's handle as absent from the list: the form would turn global for every user, the opposite of what its assignment says.
 
-**Residual.** Core's form blueprint editor authorizes `configure form fields` without naming the form, so the callback cannot reach it; the route stays open to such a user and is tracked in #116. Core's Duplicate action authorizes `create` on the form class without naming the form it copies, tracked in #117. Until #79 assigns a new form to its creator's sites, a form created by a user who does not cover every site is global and so beyond that user's edit. Whether saving `sites` should refuse a site the editor cannot access, now that `configure forms` is no bypass, is the question in #118.
+**Residual.** Core's form blueprint editor authorizes `configure form fields` without naming the form, so the callback cannot reach it; the route stays open to such a user and is tracked in #116. Core's Duplicate action authorizes `create` on the form class without naming the form it copies, tracked in #117. #79 then assigns a new form to its creator's sites, so a form created by a user who does not cover every site stays within that user's edit. Whether saving `sites` should refuse a site the editor cannot access, now that `configure forms` is no bypass, is the question in #118.
 
 **Companion.** #77. Earlier decisions: #42, #54, #57.
+
+
+## 2026-10-13: A new form takes its creator's sites on `FormCreating`, whatever created it (#79)
+
+**Decision.** A listener on core's `FormCreating` event sets `sites` on a new form to the sites the signed-in user can access, when that user is not a super user and cannot access every configured site. It leaves the form as core made it when the form already lists sites, when no user is signed in, when the user covers every site (always the case on a single-site install), and when the user can access no site.
+
+**Why.** #42 decided that editing needs every site and that a scoped creator's form is assigned to their sites, so they can still edit it; #77 put the edit rule in place. `FormCreating` fires once, before a new form is first written, for every way a form is made (the create screen, the Duplicate action, code), so no controller is replaced and an existing form is never reassigned by a later save. Keeping sites a form already lists respects an assignment made in code and a duplicate's copy of its source's.
+
+**Rejected.** Hooking the create screen's request (a middleware on `forms.store`): it misses the Duplicate action and forms made in code by a signed-in user. Assigning a creator who can access no site to an empty list: an empty list already means every site, so it would change nothing while reading as a decision. Refusing the creation for such a user: a listener that cancels the save leaves core's create screen redirecting to a form that does not exist.
+
+**Residual.** Not measured with `statamic/eloquent-driver`'s forms; whether their `save()` dispatches `FormCreating` as core's does was not checked, and #83 measured their views, not creation.
+
+**Companion.** #79. Earlier decisions: #42, #77.
