@@ -6,7 +6,22 @@ Everything above the generated section below belongs to this repository and is e
 
 ## About this repository
 
-Replace this section with what an agent needs to know before working here: what the repository is, how to install and run it, how to run its tests and checks, the conventions it follows, and anything that is true of this repository alone. The shared skills and rules below cover the organization-wide conventions; do not repeat them here.
+A Statamic add-on (`uams-web/statamic-multisite-forms`, namespace `UAMSWeb\MultisiteForms`) that makes forms per-site in a multisite install: site assignment, per-site overrides, and site-separated submissions in flat files. It is a Composer library with no `artisan`, `.env`, database or front end; a host application boots it through `extra.laravel.providers`. The `statamic-package-conventions` skill covers what that changes.
+
+### Commands
+
+- `composer install`: installs dependencies and applies the `patches/` set to `pestphp/pest-plugin-mutate` (temporary, Windows-safe mutation testing; see `upstream-patch-lifecycle`).
+- `composer ci`: the gate, run in cost order and stopping at the first failure: `test:pint`, `test:refactor` (Rector dry run), `stan` (Larastan), `test` (Pest `Unit` and `Integration`, run in parallel through the bundled paratest; `composer test:serial` runs the same suites in one process, which is the first thing to try when a failure looks order-dependent). GitHub Actions runs the same scripts as separate chained jobs (`.github/workflows/ci.yml`), plus `composer validate` and the synced-files check; change a script and its job together. `main` requires each job's `name:` (and the two pull-request-body workflows' job names) as a status check through an organization ruleset, so renaming or adding a job also means updating that ruleset's list; see the header of `ci.yml`.
+- `composer pint` and `composer refactor` apply formatting and the gating Rector profile; `composer refactor:sweep` runs the deliberate sweep profile.
+- `composer mutate`: Pest mutation testing over `src/`. Read `pcov-setup` before trusting a score.
+
+### Layout and tests
+
+- `src/` holds the add-on (PHP floor `^8.4`, `statamic/cms` `^6.35`); `tests/Unit` boots nothing, `tests/Integration` boots a minimal Statamic through Testbench (`tests/TestCase.php`).
+- Host-bound tests belong in `tests/Feature/` and are not part of `composer ci`; the `host-only-behavior-needs-a-host-run` rule says when a host run is required.
+- `composer test:tia` is Pest's test impact analysis for the inner loop: the first run records a dependency graph (needs PCOV; stored under `~/.pest/tia`, outside the repository), later runs replay unaffected tests from cache. It applies only to a full run, so `--testsuite` or `--filter` bypasses it, and it is never the gate: `composer ci` and CI run the real suite.
+- Tests run in parallel workers, so a test must not share mutable state with another: no fixed file paths, cache keys or Stache/form storage directories. Give each worker its own directory (`ParallelTesting::token()` or `uniqid()`) when a test writes files.
+- The static-analysis cache lives in `storage/phpstan` (git-ignored).
 
 <!-- uams-claude-skills:begin -->
 ## Shared skills and rules

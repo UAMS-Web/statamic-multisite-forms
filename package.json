@@ -1,0 +1,14 @@
+{
+    "name": "statamic-multisite-forms",
+    "private": true,
+    "type": "module",
+    "engines": {
+        "npm": ">=11.10.0"
+    },
+    "scripts": {
+        "test:scripts": "vitest run"
+    },
+    "devDependencies": {
+        "vitest": "^4.1.8"
+    }
+}
