@@ -70,7 +70,10 @@ final class FormsQuery extends CoreFormsQuery
     }
 
     /**
-     * `site`, when given, must name a configured site.
+     * `site`, when given and not null, must name a configured site.
+     *
+     * Required rather than nullable when present: Laravel skips its other rules for
+     * an empty string, which would then filter to the forms with no sites.
      *
      * @param  array<string, mixed>  $args
      * @return array<string, mixed>
@@ -78,8 +81,12 @@ final class FormsQuery extends CoreFormsQuery
     #[\Override]
     protected function rules(array $args = []): array
     {
+        if (($args['site'] ?? null) === null) {
+            return [];
+        }
+
         return [
-            'site' => ['nullable', 'string', Rule::in(SiteAccess::allHandles())],
+            'site' => ['required', Rule::in(SiteAccess::allHandles())],
         ];
     }
 }

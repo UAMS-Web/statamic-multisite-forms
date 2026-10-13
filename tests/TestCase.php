@@ -73,12 +73,19 @@ abstract class TestCase extends AddonTestCase
     }
 
     /**
-     * Give the application an encryption key, which a Control Panel request needs for its session.
+     * Give the application an encryption key, which a Control Panel request needs for its
+     * session, and register the REST and GraphQL routes.
      *
      * @param  Application  $app
      */
     protected function defineEnvironment($app): void
     {
         $app['config']->set('app.key', 'base64:'.base64_encode(str_repeat('k', 32)));
+
+        // Statamic registers the REST and GraphQL routes while booting, and only when
+        // enabled, so they are enabled here; which resources they expose, and the Pro
+        // edition they require, are read per request and left to each test.
+        $app['config']->set('statamic.api.enabled', true);
+        $app['config']->set('statamic.graphql.enabled', true);
     }
 }
