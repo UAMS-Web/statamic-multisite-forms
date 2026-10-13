@@ -350,6 +350,6 @@ Oldest first, one entry per closed decision, so **a new entry is appended to the
 
 **Rejected.** Replacing or extending core's controller: it ties the add-on to that class's internals. A middleware on the front-end `web` group, as the submit gate uses: it would run on every request for two Control Panel routes. Checking the route's URI rather than its name: the Control Panel prefix is configurable.
 
-**Residual.** The editor's breadcrumb links every form by title (`Form::all()` in `FormBlueprintController::edit()`), so a user allowed on one form's editor sees the titles of forms on sites they cannot access.
+**Residual.** The editor's breadcrumb links every form by title (`Form::all()` in `FormBlueprintController::edit()`), so a user allowed on one form's editor sees the titles of forms on sites they cannot access (#124).
 
 **Companion.** #116. Earlier decisions: #77.
