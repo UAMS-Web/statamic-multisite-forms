@@ -20,8 +20,11 @@ updates:
           - minor
           - patch
 
+  # The workflows, plus the local composite action they call.
   - package-ecosystem: github-actions
-    directory: /
+    directories:
+      - /
+      - /.github/actions/setup
     target-branch: main
     schedule:
       interval: weekly

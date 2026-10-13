@@ -1,5 +1,13 @@
 name: CI
 
+# The jobs mirror the scripts `composer ci` runs locally, in the same cost order:
+#   composer-validate -> synced-files -> pint -> rector -> phpstan -> pest
+# Each job `needs:` the one before it, so a failure skips every more expensive job
+# after it. The deliberate trade: a successful run is the sum of the jobs, not the
+# longest one. When a job's command changes here, change the matching `composer`
+# script (and the other way round). The shared setup lives in
+# `.github/actions/setup/action.yml`.
+
 on:
   pull_request:
   push:
@@ -16,8 +24,8 @@ permissions:
   contents: read
 
 jobs:
-  ci:
-    name: Static analysis, formatting, refactor check, tests
+  composer-validate:
+    name: Composer validate (composer.lock freshness)
     runs-on: ubuntu-latest
     steps:
       - uses: actions/checkout@v7
@@ -28,25 +36,55 @@ jobs:
           coverage: none
           tools: composer:v2
 
-      - name: Determine Composer cache directory
-        id: composer-cache
-        run: echo "dir=$(composer config --global cache-files-dir)" >> "$GITHUB_OUTPUT"
-
-      - name: Cache Composer packages
-        uses: actions/cache@v6
-        with:
-          path: ${{ steps.composer-cache.outputs.dir }}
-          key: composer-${{ runner.os }}-${{ hashFiles('composer.lock') }}
-          restore-keys: composer-${{ runner.os }}-
-
       # Fails when composer.json and composer.lock have drifted apart.
-      - name: Validate composer.json and composer.lock
-        run: composer validate --no-check-publish --no-check-all
+      - run: composer validate --no-check-publish --no-check-all
 
-      - run: composer install --no-interaction --no-progress --prefer-dist
+  synced-files:
+    name: Synced files (no hand-edited rules or skills)
+    needs: composer-validate
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v7
 
-      - run: composer ci
+      - uses: actions/setup-node@v7
+        with:
+          node-version: '22'
 
       # Fails, naming the file, when a synced rule or skill was edited by hand.
-      - name: Check synced files
-        run: node .claude/skills/synced-files/scripts/check-synced-files.mjs
+      - run: node .claude/skills/synced-files/scripts/check-synced-files.mjs
+
+  pint:
+    name: Pint
+    needs: synced-files
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v7
+      - uses: ./.github/actions/setup
+      - run: composer test:pint
+
+  rector:
+    name: Rector (gating profile)
+    needs: pint
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v7
+      - uses: ./.github/actions/setup
+      - run: composer test:refactor
+
+  phpstan:
+    name: Larastan (PHPStan)
+    needs: rector
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v7
+      - uses: ./.github/actions/setup
+      - run: composer stan
+
+  pest:
+    name: Pest (Unit and Integration)
+    needs: phpstan
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v7
+      - uses: ./.github/actions/setup
+      - run: composer test
