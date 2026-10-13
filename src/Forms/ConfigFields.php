@@ -5,6 +5,7 @@ declare(strict_types=1);
 namespace UAMSWeb\MultisiteForms\Forms;
 
 use Statamic\Facades\Form;
+use UAMSWeb\MultisiteForms\Access\AccessibleSites;
 use UAMSWeb\MultisiteForms\Sites\ConfiguredSites;
 
 /**
@@ -15,7 +16,8 @@ use UAMSWeb\MultisiteForms\Sites\ConfiguredSites;
  * blueprint, validates and processes it, and merges the value into the form's
  * data, which `Form::save()` writes to the form file. An empty selection
  * processes to null, which core leaves out of the file, so clearing the field
- * makes the form global again.
+ * makes the form global again. A non-super user may save only a selection they
+ * could still edit the form under (#118, {@see AccessibleSites}).
  *
  * The section's second field edits `site_overrides`, the rows {@see Overrides}
  * applies: a site, and a title, a store setting and email configs for it. Each
@@ -47,9 +49,9 @@ final class ConfigFields
             Assignment::KEY => [
                 // No `display`: core labels the field with the title-cased handle, "Sites".
                 'type' => 'sites',
-                'instructions' => 'The sites this form belongs to. Leave it empty to use the form on every site.',
+                'instructions' => 'The sites this form belongs to. Leave it empty to use the form on every site, which only an editor who can access every site may do.',
                 'mode' => 'select',
-                'validate' => ['new '.ConfiguredSites::class],
+                'validate' => ['new '.ConfiguredSites::class, 'new '.AccessibleSites::class],
             ],
             Overrides::KEY => [
                 'display' => 'Site overrides',

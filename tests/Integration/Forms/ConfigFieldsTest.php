@@ -171,7 +171,7 @@ it('labels the field, explains an empty selection, and offers the sites as a sel
     $field = screenSection(screenProps($this->get(settingsUrl('contact'))->assertOk()), 'Sites')['sites'] ?? [];
 
     expect($field['display'] ?? null)->toBe('Sites')
-        ->and($field['instructions'] ?? null)->toBe('The sites this form belongs to. Leave it empty to use the form on every site.')
+        ->and($field['instructions'] ?? null)->toBe('The sites this form belongs to. Leave it empty to use the form on every site, which only an editor who can access every site may do.')
         ->and($field['mode'] ?? null)->toBe('select');
 });
 
