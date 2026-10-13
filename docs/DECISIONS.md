@@ -329,3 +329,15 @@ Oldest first, one entry per closed decision, so **a new entry is appended to the
 **Residual.** Not measured with `statamic/eloquent-driver`'s forms; whether their `save()` dispatches `FormCreating` as core's does was not checked, and #83 measured their views, not creation.
 
 **Companion.** #79. Earlier decisions: #42, #77.
+
+## 2026-10-13: Control Panel submission reads keep unattributed ones by id when the user covers only some forms (#78)
+
+**Decision.** `UAMSWeb\MultisiteForms\Access\SubmissionScope` decorates the bound `SubmissionQueryBuilder` with `app()->extend()`, as #49 decided, and adds one nested condition on a Control Panel request by a signed-in non-super user. When the user covers every form (can access every site of each), it keeps `_site` in the user's sites or `_site` empty. Otherwise it reads, with a separate unscoped query, the ids of the empty-`_site` submissions of the forms the user covers, and keeps `_site` in the user's sites or `id` in that list. A bound builder that extends neither of core's query builders is refused with a `LogicException` rather than read unscoped, and a form that is not core's form class counts as one the user does not cover.
+
+**Why.** #40 makes an unattributed submission's visibility depend on its form, so the condition has to say "this form and no site". Core's Stache builder takes `form` out of the conditions and applies it to the whole query, and ignores it inside a nested group, so the per-form rule cannot be written as a group; reading the ids first is the form of it that runs through the public query API. Plucking `id` from the Stache builder returns its `form::id` keys, not the submission ids, so the ids are read from the submissions. Failing loudly on an unknown builder, and closed on an unknown form, keeps a driver nobody tested from showing another site's submissions.
+
+**Rejected.** One nested group per covered form (`form` and an empty `_site`): the Stache builder ignores the `form` inside it, so every unattributed submission would show. Caching the id list per request: a delete in the same request would leave it stale, and the read is one query per scoped builder. Hiding every unattributed submission from a user who does not cover every form: it breaks #40 for the forms the user does cover.
+
+**Residual.** Measured against core's Stache builder, in the Testbench app and in the host. Not measured with `statamic/eloquent-driver`'s submissions: its `whereNested` builds the inner query through `app(static::class)`, which resolves the concrete class rather than the contract and so should not carry the scope a second time, but that was read from the code, not run. #53's measurements covered views, not this scope.
+
+**Companion.** #78. Earlier decisions: #40, #49, #54.

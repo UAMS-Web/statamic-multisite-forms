@@ -95,6 +95,7 @@ In the Control Panel, the rows are edited under **Site overrides** in the Sites 
 Access to forms in the Control Panel follows the site access a user already has, through core's `access {site} site` permissions; there are no new permission keys.
 
 - A form assigned to sites is hidden from, and refused to, a user who can access none of them. Its submissions are refused the same way.
+- Within a form a user can open, the submissions listing, a submission's detail view, deleting one, the export, and the count on the forms index show only submissions recorded for a site the user can access. A submission with no recorded site, such as one saved before the add-on was installed, shows only to a user who can access every site its form is assigned to, or every site for a form with no sites. The API, the `form:submissions` tag and console commands are not scoped.
 - Editing a form's settings, deleting it, or editing its fields needs access to every site it is assigned to, or to every site for a form with no sites, because each change reaches all of them.
 - `configure forms` does not bypass either rule. Only super users do, which narrows what core allows that permission.
 - A form created by a user who cannot access every site is assigned to the sites they can access, so they can still edit it. A form that already lists sites when it is created, such as a duplicate of an assigned form, keeps them.
