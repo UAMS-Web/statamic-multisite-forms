@@ -41,6 +41,8 @@ final class AuthorizeFormBlueprint
 
     /**
      * Append the middleware to Statamic's authenticated Control Panel group.
+     *
+     * @param  Router  $router  The router that holds the middleware group.
      */
     public static function register(Router $router): void
     {
@@ -48,14 +50,19 @@ final class AuthorizeFormBlueprint
     }
 
     /**
-     * Authorize `configure form fields` with the form on the blueprint editor's routes.
+     * Authorize `configure form fields` with the form on the blueprint
+     * editor's routes.
      *
-     * @param  Closure(Request): Response  $next
+     * @param  Request  $request  The incoming request.
+     * @param  Closure(Request): Response  $next  The rest of the pipeline.
+     * @return Response The response from the rest of the pipeline.
      */
     public function handle(Request $request, Closure $next): Response
     {
+        // Check whether the request is for one of the blueprint editor's routes
         $route = $request->route();
         if ($route instanceof Route && in_array($route->getName(), self::ROUTES, true)) {
+            // Find the form when the route names it by handle
             $form = $route->parameter('form');
             if (is_string($form)) {
                 $form = FormFacade::find($form);
@@ -67,6 +74,7 @@ final class AuthorizeFormBlueprint
             }
         }
 
+        // Continue to the rest of the pipeline
         return $next($request);
     }
 }

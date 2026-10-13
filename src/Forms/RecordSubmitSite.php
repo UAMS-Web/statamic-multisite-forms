@@ -28,17 +28,26 @@ use UAMSWeb\MultisiteForms\Sites\RequestSite;
  * it from running. `SubmissionCreating` is the backstop: on the submit route, a
  * new submission of the submitted form that reaches its first save without
  * `_site` gets it then. A submission saved any other way, including another
- * form's saved during the submit request, is left unattributed, as the spec defines.
+ * form's saved during the submit request, is left unattributed, as the spec
+ * defines.
  */
 final class RecordSubmitSite
 {
     /** The reserved data key the site is recorded under. */
     public const string KEY = '_site';
 
+    /**
+     * Create the listener with the services it reads the request through.
+     *
+     * @param  RequestSite  $requestSite  Names the site the submission came from.
+     * @param  Request  $request  The current request, read for its route.
+     */
     public function __construct(private readonly RequestSite $requestSite, private readonly Request $request) {}
 
     /**
      * Record the submit site on a submission made through core's submit route.
+     *
+     * @param  FormSubmitted  $event  The event carrying the new submission.
      */
     public function submitted(FormSubmitted $event): void
     {
@@ -46,7 +55,10 @@ final class RecordSubmitSite
     }
 
     /**
-     * Record it on the first save of a submission the route made, if nothing has.
+     * Record it on the first save of a submission the route made, if nothing
+     * has.
+     *
+     * @param  SubmissionCreating  $event  The event carrying the submission.
      */
     public function creating(SubmissionCreating $event): void
     {
@@ -59,25 +71,37 @@ final class RecordSubmitSite
             return;
         }
 
+        // Record the site if none is set and the submit route made the submission
         if ($submission->get(self::KEY) === null && $this->madeByTheRoute($submission)) {
             $this->record($submission);
         }
     }
 
     /**
-     * Whether the request is core's submit route and the submission is of the form
-     * it submits, so another form's submission saved during the request is left alone.
+     * Whether the request is core's submit route and the submission is of the
+     * form it submits, so another form's submission saved during the request is
+     * left alone.
+     *
+     * @param  Submission  $submission  The submission about to be saved.
+     * @return bool True when the submit route made this submission.
      */
     private function madeByTheRoute(Submission $submission): bool
     {
+        // Check whether the request is on core's submit route
         $route = $this->request->route();
         if (! $route instanceof Route || $route->getName() !== ResolveSubmittedForm::ROUTE) {
             return false;
         }
 
+        // Check whether the submission is of the form the route submits
         return $submission->form()->handle() === $route->originalParameter('form');
     }
 
+    /**
+     * Record the request's submit site on a submission.
+     *
+     * @param  Submission  $submission  The submission to record the site on.
+     */
     private function record(Submission $submission): void
     {
         $submission->set(self::KEY, RequestSite::handle($this->requestSite->forSubmission()));

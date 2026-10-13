@@ -18,19 +18,26 @@ enum NotAssigned: string
     /** Abort the request with a 404. */
     case NotFound = '404';
 
+    /** The config key the setting is read from. */
     public const string CONFIG_KEY = 'statamic-multisite-forms.not_assigned';
 
     /**
      * The configured setting. An integer 404 is accepted, since a config file
      * can easily say `404` without quotes.
      *
+     * @return self The setting the config names.
+     *
      * @throws InvalidArgumentException When the configured value is not a setting.
      */
     public static function fromConfig(): self
     {
+        // Read the configured value, defaulting to rendering nothing
         $value = config(self::CONFIG_KEY, self::Empty->value);
+
+        // Match a string or integer value to a setting
         $setting = is_string($value) || is_int($value) ? self::tryFrom((string) $value) : null;
 
+        // Refuse a value that names no setting
         if ($setting === null) {
             throw new InvalidArgumentException(sprintf(
                 'The %s setting must be "empty" or "404"; got %s.',
@@ -51,9 +58,11 @@ enum NotAssigned: string
      */
     public static function reportInvalidConfig(): void
     {
+        // Attempt to read the setting
         try {
             self::fromConfig();
         } catch (InvalidArgumentException $invalidArgumentException) {
+            // Log the invalid setting instead of throwing
             logger()->error($invalidArgumentException->getMessage());
         }
     }

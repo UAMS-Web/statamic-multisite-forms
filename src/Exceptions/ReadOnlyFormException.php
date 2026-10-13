@@ -17,6 +17,11 @@ class ReadOnlyFormException extends LogicException
 {
     /**
      * The exception for one refused operation on a form's resolved view.
+     *
+     * @param  string  $operation  The refused operation, such as `saved`.
+     * @param  string  $handle  The handle of the form.
+     * @param  string  $site  The handle of the site the view was resolved for.
+     * @return self The exception, with a message naming the form and the site.
      */
     public static function for(string $operation, string $handle, string $site): self
     {

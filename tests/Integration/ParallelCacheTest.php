@@ -21,7 +21,9 @@ test('a run with no worker token keeps the shared directory', function (): void 
 });
 
 test('the application in this run uses the directory for its own token', function (): void {
+    // Work out this run's directory, falling back to the shared one
     $expected = TestCase::outpostCachePath($_SERVER['TEST_TOKEN'] ?? null) ?? storage_path('framework/cache/outpost-data');
 
+    // Expect the outpost cache store to point at it
     expect(config('cache.stores.outpost.path'))->toBe($expected);
 });

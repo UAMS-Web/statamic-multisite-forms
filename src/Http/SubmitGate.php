@@ -32,19 +32,30 @@ use UAMSWeb\MultisiteForms\Http\Middleware\ResolveSubmittedForm;
  */
 final class SubmitGate
 {
+    /**
+     * Append the submit gate to each middleware group core's front-end routes
+     * run under, and order it after `SubstituteBindings`.
+     *
+     * @param  Router  $router  The router that holds groups the kernel does not.
+     * @param  KernelContract  $kernel  The HTTP kernel that may own the groups.
+     */
     public static function register(Router $router, KernelContract $kernel): void
     {
+        // Sync the kernel with the router, then rank the gate after binding
         if ($kernel instanceof Kernel) {
             self::adoptRouterState($router, $kernel);
             $kernel->addToMiddlewarePriorityAfter(SubstituteBindings::class, ResolveSubmittedForm::class);
         }
 
+        // Append the gate to each configured group that exists
         $attached = false;
         foreach (Arr::wrap(config('statamic.routes.middleware', 'web')) as $group) {
+            // Skip a configured entry that is not a group name
             if (! is_string($group)) {
                 continue;
             }
 
+            // Append through the kernel when it owns the group, else the router
             if ($kernel instanceof Kernel && array_key_exists($group, $kernel->getMiddlewareGroups())) {
                 $kernel->appendMiddlewareToGroup($group, ResolveSubmittedForm::class);
                 $attached = true;
@@ -54,6 +65,7 @@ final class SubmitGate
             }
         }
 
+        // Warn when no group took the gate, so submits stay ungated
         if (! $attached) {
             Log::warning('Multisite Forms could not gate form submits by site: statamic.routes.middleware names no middleware group, so forms accept submits from every site.');
         }
@@ -63,6 +75,9 @@ final class SubmitGate
      * Copy the router's version of each kernel-owned group, and the router's
      * priority list, into the kernel, so the kernel's next copy to the router
      * writes back what is already there.
+     *
+     * @param  Router  $router  The router whose groups and priority are copied.
+     * @param  Kernel  $kernel  The kernel that receives them.
      */
     private static function adoptRouterState(Router $router, Kernel $kernel): void
     {
@@ -71,11 +86,13 @@ final class SubmitGate
         $routerGroups = $router->getMiddlewareGroups();
         $routerPriority = $router->middlewarePriority;
 
+        // Prefer the router's version of each group the kernel owns
         $groups = [];
         foreach ($kernel->getMiddlewareGroups() as $name => $middleware) {
             $groups[$name] = $routerGroups[$name] ?? $middleware;
         }
 
+        // Write the groups and the priority list back into the kernel
         $kernel->setMiddlewareGroups($groups);
         $kernel->setMiddlewarePriority($routerPriority);
     }

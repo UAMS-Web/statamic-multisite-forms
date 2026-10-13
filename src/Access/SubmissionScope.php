@@ -91,14 +91,21 @@ final class SubmissionScope
     // property default is not an executable line, so the coverage driver links no
     // test to the mutant and it is never run.
     // @pest-mutate-ignore: FalseToTrue
-    /** Set while the scope reads unattributed ids, so that read is not scoped itself. */
+    /**
+     * Set while the scope reads unattributed ids, so that read is not scoped itself.
+     *
+     * @var bool True only during the scope's own reads.
+     */
     private static bool $reading = false;
 
     /**
      * Decorate the bound submission query builder with the scope.
+     *
+     * @param  Application  $app  The application whose container binding is decorated.
      */
     public static function register(Application $app): void
     {
+        // Scope every submission builder the container resolves
         $app->extend(SubmissionQueryBuilder::class, static fn (SubmissionQueryBuilder $builder): SubmissionQueryBuilder => self::apply($builder));
 
         // Core dispatches FormDeleting without halting, so once it fires the delete
@@ -106,10 +113,13 @@ final class SubmissionScope
         Event::listen(FormDeleting::class, static function (): void {
             request()->attributes->set(self::DELETING, true);
         });
+
+        // Clear the flag once the form and its submissions are deleted
         Event::listen(FormDeleted::class, static function (): void {
             request()->attributes->remove(self::DELETING);
         });
 
+        // Drop the request's plan on any write that could change it
         Event::listen(self::CHANGES, static function (): void {
             request()->attributes->remove(self::PLAN);
         });
@@ -117,22 +127,31 @@ final class SubmissionScope
 
     /**
      * Add the scope to a new builder when the request calls for it.
+     *
+     * @param  SubmissionQueryBuilder  $builder  The newly resolved builder.
+     * @return SubmissionQueryBuilder The same builder, scoped when the request calls for it.
+     *
+     * @throws LogicException When the bound builder extends neither core builder.
      */
     public static function apply(SubmissionQueryBuilder $builder): SubmissionQueryBuilder
     {
+        // Skip the scope's own reads, a form delete, and non-Control Panel requests
         if (self::$reading || request()->attributes->get(self::DELETING) === true || ! self::isControlPanelRequest()) {
             return $builder;
         }
 
+        // Skip a request with no signed-in user, or a super user's
         $user = User::current();
         if ($user === null || $user->isSuper()) {
             return $builder;
         }
 
+        // Refuse a builder the scope does not know how to constrain
         if (! $builder instanceof Builder && ! $builder instanceof EloquentQueryBuilder) {
             throw new LogicException('Cannot scope submissions by site: the bound submission query builder ['.$builder::class.'] extends neither of the core query builders.');
         }
 
+        // Constrain the builder by the user's plan for this request
         self::scope($builder, self::plan($user));
 
         return $builder;
@@ -149,14 +168,19 @@ final class SubmissionScope
      * 0.57s for a super user (#123). Any write that dispatches an event that could
      * change the plan drops it, so a delete or a save in the same request is read
      * afresh.
+     *
+     * @param  UserContract  $user  The signed-in, non-super user being scoped.
+     * @return ScopePlan The request's plan for that user.
      */
     private static function plan(UserContract $user): ScopePlan
     {
+        // Reuse the request's plan when it was worked out for this user
         $plan = request()->attributes->get(self::PLAN);
         if ($plan instanceof ScopePlan && $plan->user === $user->getAuthIdentifier()) {
             return $plan;
         }
 
+        // Find the forms the user covers, then build the plan from them
         $covered = self::coveredForms($user);
         $plan = new ScopePlan(
             $user->getAuthIdentifier(),
@@ -164,6 +188,8 @@ final class SubmissionScope
             $covered['all'],
             $covered['all'] ? [] : self::unattributedIds($covered['handles'], $covered['others']),
         );
+
+        // Keep the plan on the request for later builders
         request()->attributes->set(self::PLAN, $plan);
 
         return $plan;
@@ -187,17 +213,22 @@ final class SubmissionScope
      * collide with the front end. Every path then counts as a Control Panel one,
      * which also scopes front-end and API reads for a signed-in non-super user:
      * that hides submissions rather than showing them.
+     *
+     * @return bool True when the request's path is under the Control Panel's route.
      */
     public static function isControlPanelRequest(): bool
     {
+        // Answer false when the Control Panel is off or its route is unreadable
         $route = config('statamic.cp.route');
         if (! config('statamic.cp.enabled') || ! is_string($route)) {
             return false;
         }
 
+        // Trim the route and the decoded path as the router does
         $prefix = trim($route, '/');
         $path = trim(request()->decodedPath(), '/');
 
+        // Match the path against the prefix, or every path for an empty prefix
         return $prefix === '' || $path === $prefix || str_starts_with($path, $prefix.'/');
     }
 
@@ -206,12 +237,17 @@ final class SubmissionScope
      *
      * When the user covers every form, an unattributed submission is kept outright
      * rather than by id, and the plan reads no ids.
+     *
+     * @param  Builder|EloquentQueryBuilder  $builder  The builder to constrain.
+     * @param  ScopePlan  $plan  The request's plan for the user.
      */
     private static function scope(Builder|EloquentQueryBuilder $builder, ScopePlan $plan): void
     {
         $sites = $plan->sites;
 
+        // Check whether the user covers every form
         if ($plan->all) {
+            // Keep the user's sites, and every unattributed submission
             $builder->where(static function (Builder|EloquentQueryBuilder $query) use ($sites): void {
                 $query->whereIn('_site', $sites);
                 $query->orWhereNull('_site');
@@ -222,6 +258,7 @@ final class SubmissionScope
 
         $unattributed = $plan->ids;
 
+        // Keep the user's sites, and the unattributed submissions the plan allows
         $builder->where(static function (Builder|EloquentQueryBuilder $query) use ($sites, $unattributed): void {
             $query->whereIn('_site', $sites);
             $query->orWhereIn('id', $unattributed);
@@ -235,14 +272,17 @@ final class SubmissionScope
      * Core's form getter does not type its handle, so the handles are only passed on
      * to a query, never read.
      *
-     * @return array{all: bool, handles: list<mixed>, others: list<mixed>}
+     * @param  UserContract  $user  The user whose coverage is worked out.
+     * @return array{all: bool, handles: list<mixed>, others: list<mixed>} The covered handles, the others, and whether all are covered.
      */
     private static function coveredForms(UserContract $user): array
     {
+        // Start by assuming the user covers every form
         $all = true;
         $handles = [];
         $others = [];
 
+        // Sort each form into covered or not covered
         foreach (FormFacade::all() as $form) {
             // A form whose sites cannot be read is one the user is not known to cover
             if (! $form instanceof Form) {
@@ -251,6 +291,7 @@ final class SubmissionScope
                 continue;
             }
 
+            // Count the form as covered when the user can access every one of its sites
             $sites = Assignment::sites($form);
             if (SiteAccess::canAccessAll($user, $sites === [] ? SiteAccess::allHandles() : $sites)) {
                 $handles[] = $form->handle();
@@ -273,9 +314,9 @@ final class SubmissionScope
      * or a site, so an id shared with any submission the rule should not reach is
      * dropped, which hides the unattributed submission too.
      *
-     * @param  list<mixed>  $forms
-     * @param  list<mixed>  $others
-     * @return array<mixed>
+     * @param  list<mixed>  $forms  The handles of the forms the user covers.
+     * @param  list<mixed>  $others  The handles of the other forms.
+     * @return array<mixed> The unattributed submission ids the user may read.
      */
     private static function unattributedIds(array $forms, array $others): array
     {
@@ -287,9 +328,11 @@ final class SubmissionScope
             return [];
         }
 
+        // Leave the reads below unscoped
         self::$reading = true;
 
         try {
+            // Read the ids of the covered forms' unattributed submissions
             $ids = self::idsOf($forms, static function (Builder|EloquentQueryBuilder $query): void {
                 $query->whereNull('_site');
             });
@@ -312,6 +355,7 @@ final class SubmissionScope
                 $query->whereIn('id', $ids);
             });
 
+            // Add the ids the other forms' submissions also carry
             if ($others !== []) {
                 // As above for the other forms, whatever their submissions' sites.
                 // @pest-mutate-ignore: RemoveMethodCall
@@ -320,8 +364,10 @@ final class SubmissionScope
                 })];
             }
 
+            // Keep only the ids no other submission carries
             return array_filter($ids, static fn (mixed $id): bool => ! in_array($id, $shared, true));
         } finally {
+            // Scope later reads again
             self::$reading = false;
         }
     }
@@ -329,15 +375,17 @@ final class SubmissionScope
     /**
      * The ids of the submissions of the given forms that a condition keeps, read unscoped.
      *
-     * @param  list<mixed>  $forms
-     * @param  callable(Builder|EloquentQueryBuilder): void  $condition
-     * @return array<mixed>
+     * @param  list<mixed>  $forms  The handles of the forms to read.
+     * @param  callable(Builder|EloquentQueryBuilder): void  $condition  Adds the condition to the query.
+     * @return array<mixed> The ids of the matching submissions.
      */
     private static function idsOf(array $forms, callable $condition): array
     {
         // apply() has already refused any other builder, and $reading leaves this read unscoped
         /** @var Builder|EloquentQueryBuilder $query */
         $query = app(SubmissionQueryBuilder::class);
+
+        // Restrict the read to the given forms, then apply the caller's condition
         $query->whereIn('form', $forms);
         $condition($query);
 
@@ -346,6 +394,7 @@ final class SubmissionScope
         /** @var Collection<array-key, Submission> $found */
         $found = $query->get();
 
+        // Return each found submission's own id
         return $found->map(static fn (Submission $submission): mixed => $submission->id())->all();
     }
 }

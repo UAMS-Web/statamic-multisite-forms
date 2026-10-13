@@ -31,8 +31,9 @@ final class DuplicateForm extends CoreDuplicateForm
      *
      * A selection naming no form arrives as null, which `view` refuses.
      *
-     * @param  User  $user
-     * @param  Form|null  $item
+     * @param  User  $user  The user running the action.
+     * @param  Form|null  $item  The form to duplicate, or null when none is named.
+     * @return bool True when core allows it and the user may view the form.
      */
     #[\Override]
     public function authorize($user, $item): bool

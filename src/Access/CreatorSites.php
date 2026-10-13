@@ -27,24 +27,30 @@ final class CreatorSites
 {
     /**
      * Assign the new form to the current user's sites when they do not cover every site.
+     *
+     * @param  FormCreating  $event  The event core dispatches before a new form is written.
      */
     public static function creating(FormCreating $event): void
     {
+        // Leave a form that already lists sites as it is
         $form = $event->form;
         if (! $form instanceof Form || Assignment::sites($form) !== []) {
             return;
         }
 
+        // Skip a console write and a super user
         $user = User::current();
         if ($user === null || $user->isSuper()) {
             return;
         }
 
+        // Skip a user who can access no site, or every site
         $accessible = SiteAccess::accessible($user);
         if ($accessible === [] || $accessible === SiteAccess::allHandles()) {
             return;
         }
 
+        // Assign the form to the sites the user can access
         $form->set(Assignment::KEY, $accessible);
     }
 }

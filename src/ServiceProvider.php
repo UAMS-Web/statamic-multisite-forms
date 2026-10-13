@@ -64,18 +64,33 @@ class ServiceProvider extends AddonServiceProvider
      */
     public function bootAddon(): void
     {
+        // Report an invalid add-on configuration early
         NotAssigned::reportInvalidConfig();
+
+        // Add the Sites section to the form settings screen
         ConfigFields::register();
+
+        // Apply the site rules to form access and submission reads
         FormGate::register();
         SubmissionScope::register($this->app);
+
+        // Filter the REST and GraphQL form listings by site
         FormsController::register($this->app);
         FormsQuery::register($this->app);
+
+        // Guard the form fields editor and the places that link to it
         AuthorizeFormBlueprint::register($this->app->make(Router::class));
         BlueprintBreadcrumbs::register();
         BlueprintListings::register();
+
+        // Gate core's form submit route
         SubmitGate::register($this->app->make(Router::class), $this->app->make(Kernel::class));
+
+        // Record the site a submission was made on
         Event::listen(FormSubmitted::class, [RecordSubmitSite::class, 'submitted']);
         Event::listen(SubmissionCreating::class, [RecordSubmitSite::class, 'creating']);
+
+        // Assign a new form to its creator's sites
         Event::listen(FormCreating::class, CreatorSites::creating(...));
     }
 }

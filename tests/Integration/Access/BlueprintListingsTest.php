@@ -37,32 +37,42 @@ const LISTING_FORMS = [
 ];
 
 beforeEach(function (): void {
+    // Configure two sites, a temporary forms directory and temporary roles
     useTwoSites();
     useTemporaryFormsDirectory();
     $this->rolesFile = useTemporaryRoles();
 
+    // Store each test form with the sites it lists
     foreach (LISTING_FORMS as $handle => $sites) {
+        // Make the form, failing if the repository returns another class
         $form = FormFacade::make($handle);
         if (! $form instanceof Form) {
             throw new RuntimeException('The forms repository did not make a form.');
         }
 
+        // Title the form and assign its sites unless it is global
         $form->title('Title of '.$handle);
         if ($sites !== []) {
             $form->set('sites', $sites);
         }
 
+        // Save the form to the temporary directory
         $form->save();
     }
 });
 
 afterEach(function (): void {
+    // Remove the stored forms and the temporary roles file
     removeFormsDirectory();
     File::delete($this->rolesFile);
 });
 
 /**
- * A user who may configure blueprints and form fields, with the given kind of site access.
+ * A user who may configure blueprints and form fields, with the given kind of
+ * site access.
+ *
+ * @param  string  $kind  `super`, `both`, or any other value for es only.
+ * @return UserObject The user of that kind.
  */
 function blueprintsUser(string $kind): UserObject
 {
@@ -76,67 +86,90 @@ function blueprintsUser(string $kind): UserObject
 /**
  * A Control Panel route's URL.
  *
- * @param  array<array-key, mixed>|string  $parameters
+ * @param  string  $route  The Control Panel route name, without its prefix.
+ * @param  array<array-key, mixed>|string  $parameters  The route's parameters.
+ * @return string The resolved URL.
+ *
+ * @throws RuntimeException When the route does not resolve to a URL.
  */
 function listingUrl(string $route, array|string $parameters = []): string
 {
+    // Resolve the route with its parameters
     $url = cp_route($route, $parameters);
+
+    // Fail when the route did not resolve to a URL
     if (! is_string($url)) {
         throw new RuntimeException("The [{$route}] route did not resolve.");
     }
 
+    // Return the resolved URL
     return $url;
 }
 
 /**
  * The handles of the forms the blueprints index lists, sorted, and its HTML.
  *
- * @return array{list<string>, string}
+ * @param  TestCase  $case  The running test, whose signed-in user asks.
+ * @return array{list<string>, string} The sorted handles, then the page HTML.
  */
 function indexedForms(TestCase $case): array
 {
+    // Open the blueprints index
     $response = $case->get(listingUrl('blueprints.index'))->assertOk();
 
+    // Collect the handle of every form the page's props list
     $handles = [];
     $response->assertInertia(static function (AssertableInertia $page) use (&$handles): void {
+        // Read the forms prop from the page
         $props = $page->toArray()['props'];
         $forms = is_array($props) ? ($props[BlueprintListings::FORMS] ?? null) : null;
+
+        // Gather each form's handle, failing on a missing list or handle
         foreach (is_array($forms) ? $forms : throw new RuntimeException('The page lists no forms.') as $form) {
             $handles[] = is_array($form) && is_string($form['handle'] ?? null) ? $form['handle'] : throw new RuntimeException('A form has no handle.');
         }
     });
 
+    // Sort the handles so the order is stable
     sort($handles);
 
     return [$handles, (string) $response->getContent()];
 }
 
 /**
- * The handles of the forms whose fields editor the command palette links, sorted, and its items.
+ * The handles of the forms whose fields editor the command palette links,
+ * sorted, and its items.
  *
- * @return array{list<string>, mixed}
+ * @param  TestCase  $case  The running test, whose signed-in user asks.
+ * @return array{list<string>, mixed} The sorted handles, then the raw items.
  */
 function paletteForms(TestCase $case): array
 {
+    // Fetch the command palette's items
     $items = $case->getJson(listingUrl('command-palette.index'))->assertOk()->json();
 
+    // Find each test form whose fields editor an item links
     $handles = [];
     foreach (is_array($items) ? $items : [] as $item) {
         foreach (array_keys(LISTING_FORMS) as $handle) {
+            // Record the form when the item links its editor
             if (is_array($item) && ($item['url'] ?? null) === listingUrl('blueprints.forms.edit', $handle)) {
                 $handles[] = $handle;
             }
         }
     }
 
+    // Sort the handles so the order is stable
     sort($handles);
 
     return [$handles, $items];
 }
 
 it('lists on the blueprints index only the forms whose editor the user may open', function (string $kind, array $handles, bool $english): void {
+    // Sign in as the user of the given kind
     $this->actingAs(blueprintsUser($kind));
 
+    // Read the forms the blueprints index lists, and its HTML
     [$listed, $html] = indexedForms($this);
 
     // The HTML check runs both ways, so a page that stopped carrying its data would fail it
@@ -149,10 +182,13 @@ it('lists on the blueprints index only the forms whose editor the user may open'
 ]);
 
 it('links from the command palette only the forms whose editor the user may open', function (string $kind, array $handles): void {
+    // Sign in as the user of the given kind
     $this->actingAs(blueprintsUser($kind));
 
+    // Read the forms the command palette links, and its items
     [$linked, $items] = paletteForms($this);
 
+    // Expect only the openable forms linked, and the items still a list
     expect($linked)->toBe($handles)
         ->and(is_array($items) && array_is_list($items))->toBeTrue();
 })->with([
@@ -162,16 +198,21 @@ it('links from the command palette only the forms whose editor the user may open
 ]);
 
 it('keeps the palette items that link no fields editor', function (): void {
+    // Sign in as an es-only user
     $this->actingAs(blueprintsUser('es'));
 
+    // Read the command palette's items
     [, $items] = paletteForms($this);
 
+    // Expect an item that links another blueprint editor kept
     expect(array_column(is_array($items) ? $items : [], 'url'))->toContain(listingUrl('blueprints.users.edit'));
 });
 
 it('keeps an item whose link is missing or names no fields editor', function (): void {
+    // Sign in as an es-only user
     $this->actingAs(blueprintsUser('es'));
 
+    // Expect only the en-only editor link filtered out
     expect(BlueprintListings::kept([
         ['url' => listingUrl('blueprints.forms.edit', 'english')],
         ['url' => 'http://localhost/cp/elsewhere'],
@@ -185,8 +226,10 @@ it('keeps an item whose link is missing or names no fields editor', function ():
 });
 
 it('leaves every other response alone', function (?string $routeName, string $kind): void {
+    // Sign in as an es-only user
     $this->actingAs(blueprintsUser('es'));
 
+    // Build a request, on the named route when the case gives one
     $request = Request::create('/cp/somewhere');
     if ($routeName !== null) {
         $route = new Route('GET', 'cp/somewhere', [])->name($routeName);
@@ -194,6 +237,7 @@ it('leaves every other response alone', function (?string $routeName, string $ki
         $request->setRouteResolver(static fn (): Route => $route);
     }
 
+    // Build a response of the given kind holding an en-only editor link
     $items = [['url' => listingUrl('blueprints.forms.edit', 'english')]];
     $response = match ($kind) {
         'inertia' => Inertia::render('Page', [BlueprintListings::FORMS => 'as given']),
@@ -201,8 +245,10 @@ it('leaves every other response alone', function (?string $routeName, string $ki
         default => new Response('plain'),
     };
 
+    // Prepare the response through the listener
     BlueprintListings::preparing(new PreparingResponse($request, $response));
 
+    // Expect the response left as it was given
     expect(match (true) {
         $response instanceof InertiaResponse => listingsProp($response),
         $response instanceof Collection => $response->all(),
@@ -223,12 +269,15 @@ it('leaves every other response alone', function (?string $routeName, string $ki
 ]);
 
 it('leaves a response alone whose request is not a Laravel request', function (): void {
+    // Sign in as an es-only user and build a collection with an en-only link
     $this->actingAs(blueprintsUser('es'));
     $items = [['url' => listingUrl('blueprints.forms.edit', 'english')]];
     $response = collect($items);
 
+    // Prepare the collection for a plain Symfony request
     BlueprintListings::preparing(new PreparingResponse(SymfonyRequest::create('/cp/command-palette'), $response));
 
+    // Expect the collection left as it was given
     expect($response->all())->toBe($items);
 });
 
@@ -237,15 +286,21 @@ it('leaves a response alone whose request is not a Laravel request', function ()
  *
  * Read from the response's own props: inertia-laravel 2 merges shared props into
  * them at render and 3 keeps them apart, so only this prop is compared.
+ *
+ * @param  InertiaResponse  $response  The Inertia response to read.
+ * @return mixed The forms prop, or null when the response has none.
  */
 function listingsProp(InertiaResponse $response): mixed
 {
+    // Read the response's own props through reflection
     $props = new ReflectionProperty(InertiaResponse::class, 'props')->getValue($response);
 
+    // Return the forms prop, if any
     return is_array($props) ? ($props[BlueprintListings::FORMS] ?? null) : null;
 }
 
 it('filters a palette cached under another host', function (): void {
+    // Sign in as an es-only user
     $this->actingAs(blueprintsUser('es'));
 
     // Core caches the palette per user with absolute links, built on the first host
@@ -254,9 +309,12 @@ it('filters a palette cached under another host', function (): void {
     CommandPalette::build();
     URL::forceRootUrl(null);
 
+    // Fetch the palette from a second host
     $items = $this->getJson('http://second.test/cp/command-palette')->assertOk()->json();
 
+    // Keep the item links that point to a form fields editor
     $forms = array_values(array_filter(array_column(is_array($items) ? $items : [], 'url'), static fn (mixed $url): bool => is_string($url) && str_contains($url, '/blueprints/forms/')));
 
+    // Expect only the es-only form's cached link kept
     expect($forms)->toBe(['https://first.test/cp/fields/blueprints/forms/spanish/edit']);
 });

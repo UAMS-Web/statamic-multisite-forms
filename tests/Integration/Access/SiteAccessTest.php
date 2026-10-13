@@ -12,17 +12,21 @@ use UAMSWeb\MultisiteForms\Access\SiteAccess;
  * @command  vendor/bin/pest tests/Integration/Access/SiteAccessTest.php
  */
 beforeEach(function (): void {
+    // Configure two sites and a temporary roles file
     useTwoSites();
     $this->rolesFile = useTemporaryRoles();
 });
 
 afterEach(function (): void {
+    // Remove the temporary roles file
     File::delete($this->rolesFile);
 });
 
 it("follows the user's site permissions", function (): void {
+    // Make a user who can access only es
     $user = userWith('es-only', ['access es site']);
 
+    // Expect every check to answer by that one site
     expect(SiteAccess::canAccess($user, 'es'))->toBeTrue()
         ->and(SiteAccess::canAccess($user, 'en'))->toBeFalse()
         ->and(SiteAccess::canAccessAny($user, ['en', 'es']))->toBeTrue()

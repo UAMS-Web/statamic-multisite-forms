@@ -29,6 +29,7 @@ const BLUEPRINT_FORMS = [
 ];
 
 beforeEach(function (): void {
+    // Configure two sites, a temporary forms directory and temporary roles
     useTwoSites();
     useTemporaryFormsDirectory();
     $this->rolesFile = useTemporaryRoles();
@@ -37,12 +38,15 @@ beforeEach(function (): void {
     $this->blueprintsDirectory = sys_get_temp_dir().'/msf-blueprints-'.uniqid('', true);
     app(BlueprintRepository::class)->setDirectories($this->blueprintsDirectory);
 
+    // Store each test form with the sites it lists
     foreach (BLUEPRINT_FORMS as $handle => $sites) {
+        // Make the form, failing if the repository returns another class
         $form = FormFacade::make($handle);
         if (! $form instanceof Form) {
             throw new RuntimeException('The forms repository did not make a form.');
         }
 
+        // Title the form, assign its sites and save it
         $form->title(ucfirst($handle));
         $form->set('sites', $sites);
         $form->save();
@@ -50,6 +54,7 @@ beforeEach(function (): void {
 });
 
 afterEach(function (): void {
+    // Remove the stored forms, the roles file and the blueprints directory
     removeFormsDirectory();
     File::delete($this->rolesFile);
     File::deleteDirectory($this->blueprintsDirectory);
@@ -58,7 +63,9 @@ afterEach(function (): void {
 /**
  * A user with `configure form fields` who can access the given sites.
  *
- * @param  list<string>  $sites
+ * @param  string  $id  The id to save the user under.
+ * @param  list<string>  $sites  The handles of the sites the user can access.
+ * @return UserObject The saved user.
  */
 function fieldsConfigurer(string $id, array $sites): UserObject
 {
@@ -68,22 +75,30 @@ function fieldsConfigurer(string $id, array $sites): UserObject
 /**
  * The URL of a blueprint editor route for a form.
  *
+ * @param  string  $route  The Control Panel route name, without its prefix.
+ * @param  string  $handle  The form handle the route takes.
+ * @return string The resolved URL.
+ *
  * @throws RuntimeException When the route does not resolve to a URL.
  */
 function blueprintUrl(string $route, string $handle): string
 {
+    // Resolve the route for the form
     $url = cp_route($route, $handle);
+
+    // Fail when the route did not resolve to a URL
     if (! is_string($url)) {
         throw new RuntimeException("The [{$route}] route did not resolve.");
     }
 
+    // Return the resolved URL
     return $url;
 }
 
 /**
  * A blueprint the editor's save accepts: one tab with one text field.
  *
- * @return array{tabs: list<array<string, mixed>>}
+ * @return array{tabs: list<array<string, mixed>>} The blueprint payload.
  */
 function blueprintPayload(): array
 {
@@ -107,34 +122,45 @@ function blueprintPayload(): array
 /**
  * Whether a stored form's blueprint has the field the test payload adds.
  *
+ * @param  string  $handle  The handle of the stored form.
+ * @return bool True when the blueprint has the `msf_probe` field.
+ *
  * @throws RuntimeException When the form or its blueprint is missing.
  */
 function hasProbeField(string $handle): bool
 {
+    // Find the form's blueprint, failing when either is missing
     $form = FormFacade::find($handle);
     $blueprint = $form instanceof Form ? $form->blueprint() : null;
     if (! $blueprint instanceof Blueprint) {
         throw new RuntimeException("No [{$handle}] form blueprint.");
     }
 
+    // Check whether the blueprint has the probe field
     return $blueprint->fields()->has('msf_probe') === true;
 }
 
 it('refuses the screen and the save to a user without every site of the form', function (string $handle): void {
+    // Sign in as a fields configurer who can access only es
     $this->actingAs(fieldsConfigurer('es-fields', ['es']));
 
+    // Expect the editor screen and its save both refused
     $this->getJson(blueprintUrl('blueprints.forms.edit', $handle))->assertForbidden();
     $this->patchJson(blueprintUrl('blueprints.forms.update', $handle), blueprintPayload())->assertForbidden();
 
+    // Expect the blueprint left without the probe field
     expect(hasProbeField($handle))->toBeFalse();
 })->with(['an en-only form' => ['english'], 'an en and es form' => ['shared']]);
 
 it('opens and saves the editor for a user with every site of the form', function (string $kind, string $handle): void {
+    // Sign in as a super user or a fields configurer of the given sites
     $this->actingAs($kind === 'super' ? superUser() : fieldsConfigurer('fields-'.$kind, $kind === 'both' ? ['en', 'es'] : ['es']));
 
+    // Expect the editor screen opened and its save accepted
     $this->get(blueprintUrl('blueprints.forms.edit', $handle))->assertOk();
     $this->patchJson(blueprintUrl('blueprints.forms.update', $handle), blueprintPayload())->assertOk();
 
+    // Expect the blueprint saved with the probe field
     expect(hasProbeField($handle))->toBeTrue();
 })->with([
     'an es-only user, es-only form' => ['es', 'spanish'],
@@ -143,8 +169,10 @@ it('opens and saves the editor for a user with every site of the form', function
 ]);
 
 it('leaves a missing form to core', function (): void {
+    // Sign in as a fields configurer who can access only es
     $this->actingAs(fieldsConfigurer('es-fields', ['es']));
 
+    // Expect core's not-found answer for a form that does not exist
     $this->getJson(blueprintUrl('blueprints.forms.edit', 'missing'))->assertNotFound();
 });
 
@@ -153,17 +181,21 @@ it('passes every other Control Panel route through, even one naming the form', f
     // sites, though its blueprint would need both
     $this->actingAs(userWith('es-reader', ['access cp', 'configure form fields', 'access es site', 'view shared form submissions']));
 
+    // Expect the shared form's submissions listing to open
     $this->getJson(blueprintUrl('forms.submissions.index', 'shared'))->assertOk();
 });
 
 it('authorizes a form handle the route has not bound yet', function (): void {
+    // Sign in as a fields configurer who can access only es
     $this->actingAs(fieldsConfigurer('es-fields', ['es']));
 
+    // Build an editor request whose route holds the en-only handle unbound
     $route = new Route('GET', 'cp/fields/blueprints/forms/{form}/edit', [])->name('statamic.cp.blueprints.forms.edit');
     $request = Request::create('/cp/fields/blueprints/forms/english/edit');
     $route->bind($request);
     $request->setRouteResolver(static fn (): Route => $route);
 
+    // Run the middleware, expecting it to refuse
     (new AuthorizeFormBlueprint)->handle($request, static fn (): Response => new Response);
 })->throws(AuthorizationException::class);
 
@@ -171,15 +203,20 @@ it('passes a request with no route, or a handle naming no form, to the next midd
     // Without the permission, authorizing anything at all would refuse
     $this->actingAs(userWith('no-fields', ['access cp', 'access es site']));
 
+    // Build an editor request for a form that does not exist
     $request = Request::create('/cp/fields/blueprints/forms/missing/edit');
+
+    // Attach the editor route when the case names a handle
     if ($handle !== null) {
         $route = new Route('GET', 'cp/fields/blueprints/forms/{form}/edit', [])->name('statamic.cp.blueprints.forms.edit');
         $route->bind($request);
         $request->setRouteResolver(static fn (): Route => $route);
     }
 
+    // Run the middleware with a next step that answers `next`
     $response = (new AuthorizeFormBlueprint)->handle($request, static fn (): Response => new Response('next'));
 
+    // Expect the request passed on to the next step
     expect($response->getContent())->toBe('next');
 })->with(['no route' => [null], 'a handle naming no form' => ['missing']]);
 

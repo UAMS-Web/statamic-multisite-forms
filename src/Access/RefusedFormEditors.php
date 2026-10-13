@@ -26,14 +26,18 @@ final class RefusedFormEditors
     /**
      * The paths of the refused editors, built as core builds its links to them.
      *
-     * @return list<string>
+     * @return list<string> The URL paths of the editors the current user is refused.
      */
     public static function paths(): array
     {
+        // Collect the editor path of each form the user may not change
         $refused = [];
         /** @var Form $form */
         foreach (FormFacade::all() as $form) {
+            // Build the path of the form's fields editor
             $path = self::pathOf(cp_route('blueprints.forms.edit', $form->handle()));
+
+            // Keep the path when the gate refuses the editor
             if ($path !== null && Gate::denies('configure form fields', [$form])) {
                 $refused[] = $path;
             }
@@ -45,7 +49,10 @@ final class RefusedFormEditors
     /**
      * Whether a link, an array with its URL under the given key, points at one of the refused editors.
      *
-     * @param  list<string>  $refused
+     * @param  mixed  $link  The link to check, expected to be an array.
+     * @param  list<string>  $refused  The refused editor paths, from paths().
+     * @param  string  $key  The key under which the link holds its URL.
+     * @return bool True when the link's URL path is one of the refused paths.
      */
     public static function isRefused(mixed $link, array $refused, string $key = 'url'): bool
     {
@@ -54,11 +61,16 @@ final class RefusedFormEditors
 
     /**
      * A URL's path, or null for anything that is not a URL with one.
+     *
+     * @param  mixed  $url  The value to read a path from.
+     * @return string|null The URL's path, or null when there is none.
      */
     private static function pathOf(mixed $url): ?string
     {
+        // Parse the path out of a string URL
         $path = is_string($url) ? parse_url($url, PHP_URL_PATH) : null;
 
+        // Return the path only when parsing found one
         return is_string($path) ? $path : null;
     }
 }
