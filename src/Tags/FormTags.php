@@ -34,7 +34,8 @@ use UAMSWeb\MultisiteForms\Sites\RequestSite;
  * Each tag returns whatever core's returns, which is wider than core's docblocks
  * say (`create` returns an array when there is no parser to render its content,
  * as through `Statamic::tag()`), hence `mixed`. For an unassigned form `create`
- * returns an empty string, `errors` and `success` return `false`, `submission`
+ * returns an empty string, or an empty array when there is no parser (#89),
+ * `errors` and `success` return `false`, `submission`
  * returns null, and `submissions` returns an empty list, which a tag pair renders
  * as it renders a form with no submissions.
  */
@@ -63,10 +64,20 @@ class FormTags extends Tags
 
     /**
      * `{{ form:create }}`, and `{{ form:{handle} }}`, which core's `__call` renders through it.
+     *
+     * Gated with no parser, it returns an empty array: core returns the form's data
+     * as an array there, and an empty one is what core returns when it has nothing
+     * (`user:passkeys`), so `@if ($form)` skips it and a loop over it runs zero times.
+     *
+     * @return mixed core's docblock says string; see the class docblock
      */
     public function create(): mixed
     {
-        return $this->gated() ? '' : parent::create();
+        if (! $this->gated()) {
+            return parent::create();
+        }
+
+        return $this->canParseContents() ? '' : [];
     }
 
     public function errors(): mixed

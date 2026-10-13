@@ -6,6 +6,7 @@ use Illuminate\Log\Events\MessageLogged;
 use Illuminate\Support\Facades\Event;
 use Statamic\Events\FormBlueprintFound;
 use Statamic\Exceptions\NotFoundHttpException;
+use Statamic\Facades\Antlers;
 use Statamic\Facades\Blink;
 use Statamic\Facades\Site;
 use Statamic\Fields\Blueprint;
@@ -54,16 +55,17 @@ function taggedForm(?array $sites): Form
 }
 
 /**
- * Load the `form` tag the way Antlers does, for one of its methods.
+ * Load the `form` tag the way Antlers does, for one of its methods. With no parser,
+ * as through `Statamic::tag()->fetch()`, core's `create` returns data rather than HTML.
  *
  * @param  class-string  $expected  the tag class the handle must resolve to
  * @param  array<string, mixed>  $params
  * @param  array<string, mixed>  $context
  */
-function formTag(string $method, array $params = ['in' => 'contact'], array $context = [], string $expected = FormTags::class): CoreFormTags
+function formTag(string $method, array $params = ['in' => 'contact'], array $context = [], string $expected = FormTags::class, bool $parsed = false): CoreFormTags
 {
     $tag = app(Loader::class)->load('form', [
-        'parser' => null,
+        'parser' => $parsed ? Antlers::parser() : null,
         'params' => $params,
         'content' => '',
         'context' => $context,
@@ -192,7 +194,7 @@ it('renders nothing from every form tag for an unassigned form under empty', fun
     taggedForm(['en']);
     Site::setCurrent('es');
 
-    expect(formTag($method)->{$method}())->toBe($nothing);
+    expect(formTag($method, parsed: true)->{$method}())->toBe($nothing);
 })->with([
     'create' => ['create', ''],
     'errors' => ['errors', false],
@@ -200,6 +202,19 @@ it('renders nothing from every form tag for an unassigned form under empty', fun
     'submission' => ['submission', null],
     'submissions' => ['submissions', []],
 ]);
+
+it('returns an empty array from create fetched with no parser for an unassigned form (#89)', function (): void {
+    taggedForm(['en']);
+    Site::setCurrent('es');
+
+    expect(formTag('create')->create())->toBe([]);
+});
+
+it('returns the HTML core renders from create with a parser for an assigned form', function (): void {
+    taggedForm(['en']);
+
+    expect(formTag('create', parsed: true)->create())->toContain('<form');
+});
 
 it('returns the submission core flashed for an assigned form, and nothing before a submit', function (): void {
     $form = taggedForm(['en']);
@@ -219,9 +234,8 @@ it('renders nothing through the wildcard form of the tag', function (): void {
     taggedForm(['en']);
     Site::setCurrent('es');
 
-    $tag = formTag('contact', params: []);
-
-    expect($tag->__call('contact', []))->toBe('');
+    expect(formTag('contact', params: [], parsed: true)->__call('contact', []))->toBe('')
+        ->and(formTag('contact', params: [])->__call('contact', []))->toBe([]);
 });
 
 it('logs one warning naming the form and the site, however often the form is rendered', function (): void {
@@ -261,8 +275,8 @@ it('renders nothing rather than aborting again while the 404 page renders the sa
     $other->save();
 
     expect(fn (): mixed => formTag('create')->create())->toThrow(NotFoundHttpException::class)
-        ->and(formTag('create')->create())->toBe('')
-        ->and(formTag('create', ['in' => 'newsletter'])->create())->toBe('');
+        ->and(formTag('create')->create())->toBe([])
+        ->and(formTag('create', ['in' => 'newsletter'])->create())->toBe([]);
 });
 
 it('leaves form:fields to core, which renders only what form:create hands it', function (): void {
@@ -273,7 +287,7 @@ it('gates a form passed in from context, which core would put in its cache direc
     $form = taggedForm(['en']);
     Site::setCurrent('es');
 
-    expect(formTag('create', params: [], context: ['form' => $form])->create())->toBe('');
+    expect(formTag('create', params: [], context: ['form' => $form])->create())->toBe([]);
 });
 
 it('gates the base form when the cache already holds a view for another site', function (): void {
@@ -281,7 +295,7 @@ it('gates the base form when the cache already holds a view for another site', f
     Blink::put('form-contact', SiteForm::of($form, 'en'));
     Site::setCurrent('es');
 
-    expect(formTag('create')->create())->toBe('');
+    expect(formTag('create')->create())->toBe([]);
 });
 
 it('leaves a missing form to core, which reports it', function (): void {
