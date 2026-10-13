@@ -85,6 +85,11 @@ jobs:
         with:
           node-version: '22'
 
+      # Node 22 bundles npm 10.9.x, below the `engines.npm` floor that `.npmrc`'s
+      # engine-strict enforces, so `npm ci` refuses to run without this pin.
+      - name: Pin npm to the engines floor
+        run: npm install -g npm@^11.10.0
+
       - run: npm ci
       - run: npm run test:scripts
 

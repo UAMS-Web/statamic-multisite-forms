@@ -12,9 +12,22 @@
 * text=auto eol=lf
 
 *.php text eol=lf
-*.{json,md,xml,yml,yaml,neon,dist} text eol=lf
+*.json text eol=lf
+*.md text eol=lf
+*.xml text eol=lf
+*.yml text eol=lf
+*.yaml text eol=lf
+*.neon text eol=lf
+*.dist text eol=lf
 
-*.{png,gif,jpg,jpeg,webp,ico,pdf,zip} -text
+*.png -text
+*.gif -text
+*.jpg -text
+*.jpeg -text
+*.webp -text
+*.ico -text
+*.pdf -text
+*.zip -text
 
 # Development-only paths stay out of `git archive` and release packaging.
 /.gitattributes export-ignore
@@ -40,3 +53,8 @@
 /.editorconfig export-ignore
 /.githooks/ export-ignore
 /docs/ export-ignore
+/.claude/ export-ignore
+/.agents/ export-ignore
+/.cursor/ export-ignore
+/AGENTS.md export-ignore
+/.gitignore export-ignore
