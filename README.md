@@ -113,7 +113,7 @@ php please multisite-forms:attribute contact en --dry-run   # list what would ch
 php please multisite-forms:attribute contact en
 ```
 
-The command records the site on every submission of the form that has none, and leaves submissions that already record a site alone. It prints each submission it changes and a count, and logs each change at `info` level with the form, the submission's id and the site. `--dry-run` prints the same list and changes nothing. An unknown form or site, or a site the form is not assigned to, is an error and changes nothing; a form with no sites takes any site. Submissions are saved quietly, so no email is sent and no submission event fires. It works with submissions in flat files or in the database through `statamic/eloquent-driver`.
+The command records the site on every submission of the form that has none, and leaves submissions that already record a site alone. It prints each submission it changes and a count, and logs each change at `info` level with the form, the submission's id and the site. `--dry-run` prints the same list and changes nothing. An unknown form or site, or a site the form is not assigned to, is an error and changes nothing; a form with no sites takes any site. Handles match exactly, including case. Submissions are saved quietly, so no submission event fires, and no email is sent, as for any save outside the submit route. The command leaves alone a submission whose recorded site is an empty string, which it does not count as unattributed. It works with submissions in flat files or in the database through `statamic/eloquent-driver`.
 
 ## Checking a form's site in a template
 

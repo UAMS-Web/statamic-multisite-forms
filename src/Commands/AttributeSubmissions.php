@@ -31,8 +31,9 @@ use UAMSWeb\MultisiteForms\Forms\RecordSubmitSite;
  *
  * It reads through the submission query builder, so it works on whichever driver
  * stores submissions, and saves quietly, as core's own data migrations do: a
- * backfill is not a new submission, so no email, event or listener should fire
- * for it. Each change is logged at `info` level with the submission's id.
+ * backfill is not a new submission, so no submission event or its listeners
+ * should fire for it. No email is sent either way: core sends a form's email only
+ * from its submit route. Each change is logged at `info` level with the submission's id.
  *
  * @command  php please multisite-forms:attribute contact en --dry-run
  */
@@ -52,7 +53,7 @@ final class AttributeSubmissions extends Command
     {
         $formHandle = $this->argumentText('form');
         $siteHandle = $this->argumentText('site');
-        $form = FormFacade::find($formHandle);
+        $form = self::formNamed($formHandle);
         $site = Site::get($siteHandle);
 
         if (! $form instanceof Form) {
@@ -81,14 +82,15 @@ final class AttributeSubmissions extends Command
             // A string on the Stache and a number on the Eloquent driver; the contract declares none
             /** @var string|int|float $id */
             $id = $submission->id();
-            $this->line(($dryRun ? 'Would attribute ' : 'Attributed ').$id);
-
             if ($dryRun) {
+                $this->line('Would attribute '.$id);
+
                 continue;
             }
 
             $submission->set(RecordSubmitSite::KEY, $siteHandle);
             $submission->saveQuietly();
+            $this->line('Attributed '.$id);
             Log::info('Multisite Forms attributed a submission to a site.', [
                 'form' => $formHandle,
                 'submission' => $id,
@@ -106,6 +108,27 @@ final class AttributeSubmissions extends Command
         ));
 
         return self::SUCCESS;
+    }
+
+    /**
+     * The form with exactly this handle.
+     *
+     * Not `Form::find()`: on a filesystem that ignores case it finds `contact.yaml`
+     * for `Contact` and returns a form with that handle, whose submissions the Stache
+     * then saves through a store other than the form's own, leaving its index stale.
+     */
+    private static function formNamed(string $handle): ?Form
+    {
+        // The facade declares `mixed`; core's repository returns a collection of forms
+        /** @var iterable<Form> $forms */
+        $forms = FormFacade::all();
+        foreach ($forms as $form) {
+            if ($form->handle() === $handle) {
+                return $form;
+            }
+        }
+
+        return null;
     }
 
     /**

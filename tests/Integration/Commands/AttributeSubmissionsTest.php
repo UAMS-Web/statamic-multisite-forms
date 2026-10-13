@@ -277,6 +277,7 @@ it('refuses an unknown form, an unknown site, or a site the form is not assigned
     expect(storedFiles($this->directory))->toBe($before);
 })->with([
     'an unknown form' => ['missing', 'en', 'There is no form [missing].'],
+    'a form handle in another case' => ['Shared', 'en', 'There is no form [Shared].'],
     'an unknown site' => ['shared', 'fr', 'There is no site [fr].'],
     'a site the form is not assigned to' => ['english', 'es', 'The form [english] is not assigned to the site [es].'],
 ]);
