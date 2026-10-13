@@ -9,11 +9,30 @@ use Mockery\MockInterface;
 use Statamic\Auth\File\User as UserObject;
 use Statamic\Contracts\Forms\Submission;
 use Statamic\Contracts\Forms\SubmissionQueryBuilder;
+use Statamic\Events\FormDeleted;
+use Statamic\Events\FormSaved;
+use Statamic\Events\RoleDeleted;
+use Statamic\Events\RoleSaved;
+use Statamic\Events\SiteCreated;
+use Statamic\Events\SiteDeleted;
+use Statamic\Events\SiteSaved;
+use Statamic\Events\SubmissionDeleted;
+use Statamic\Events\SubmissionSaved;
+use Statamic\Events\UserDeleted;
+use Statamic\Events\UserGroupDeleted;
+use Statamic\Events\UserGroupSaved;
+use Statamic\Events\UserSaved;
 use Statamic\Facades\Form as FormFacade;
 use Statamic\Facades\FormSubmission;
+use Statamic\Facades\Role;
+use Statamic\Facades\Site;
 use Statamic\Facades\Stache;
+use Statamic\Facades\User;
+use Statamic\Facades\UserGroup;
 use Statamic\Forms\Form;
+use Statamic\Forms\Submission as SubmissionObject;
 use Statamic\Query\EloquentQueryBuilder;
+use Statamic\Sites\Site as SiteObject;
 use Statamic\Stache\Query\SubmissionQueryBuilder as StacheSubmissionQueryBuilder;
 use Statamic\Stache\Stores\Store;
 use Statamic\Statamic;
@@ -498,3 +517,88 @@ it('scopes a Control Panel listing reached through a URL-encoded path', function
     'an encoded letter' => ['/%63p/forms/shared/submissions'],
     'an encoded slash' => ['/cp%2Fforms/shared/submissions'],
 ]);
+
+/**
+ * Save an unattributed submission to the es-only form without dispatching events,
+ * so nothing tells the scope its plan is out of date.
+ */
+function quietlySaveUnattributed(): void
+{
+    $spanish = FormFacade::find('spanish');
+    if (! $spanish instanceof Form) {
+        throw new RuntimeException('No [spanish] form.');
+    }
+
+    $submission = $spanish->makeSubmission();
+    if (! $submission instanceof SubmissionObject) {
+        throw new RuntimeException('The form did not make a submission.');
+    }
+
+    $submission->id('quiet-unattributed');
+    $submission->set('name', 'quiet');
+    $submission->saveQuietly();
+}
+
+/**
+ * The es site.
+ *
+ * @throws RuntimeException When there is no es site.
+ */
+function spanishSite(): SiteObject
+{
+    $site = Site::get('es');
+    if (! $site instanceof SiteObject) {
+        throw new RuntimeException('No [es] site.');
+    }
+
+    return $site;
+}
+
+it('reads the unattributed ids once per request, and afresh in the next', function (): void {
+    $this->actingAs(scopeUser('es-only', ['es']));
+    onPath('/cp/forms');
+
+    $before = submissionsOf(['spanish'])->count();
+    quietlySaveUnattributed();
+    $same = submissionsOf(['spanish'])->count();
+
+    onPath('/cp/forms');
+
+    expect([$before, $same, submissionsOf(['spanish'])->count()])->toBe([2, 2, 3]);
+});
+
+it('reads the unattributed ids afresh after a write that can change them in the same request', function (Closure $event): void {
+    $this->actingAs(scopeUser('es-only', ['es']));
+    onPath('/cp/forms');
+
+    $before = submissionsOf(['spanish'])->count();
+    quietlySaveUnattributed();
+    event($event());
+
+    expect([$before, submissionsOf(['spanish'])->count()])->toBe([2, 3]);
+})->with([
+    'a submission saved' => [static fn (): object => new SubmissionSaved(FormSubmission::make())],
+    'a submission deleted' => [static fn (): object => new SubmissionDeleted(FormSubmission::make())],
+    'a form saved' => [static fn (): object => new FormSaved(FormFacade::make('other'))],
+    'a form deleted' => [static fn (): object => new FormDeleted(FormFacade::make('other'))],
+    'a site created' => [static fn (): object => new SiteCreated(spanishSite())],
+    'a site saved' => [static fn (): object => new SiteSaved(spanishSite())],
+    'a site deleted' => [static fn (): object => new SiteDeleted(spanishSite())],
+    'a role saved' => [static fn (): object => new RoleSaved(Role::make('other'))],
+    'a role deleted' => [static fn (): object => new RoleDeleted(Role::make('other'))],
+    'a user saved' => [static fn (): object => new UserSaved(User::make())],
+    'a user deleted' => [static fn (): object => new UserDeleted(User::make())],
+    'a user group saved' => [static fn (): object => new UserGroupSaved(UserGroup::make())],
+    'a user group deleted' => [static fn (): object => new UserGroupDeleted(UserGroup::make())],
+]);
+
+it('keeps the plan of one user from another in the same request', function (): void {
+    onPath('/cp/forms');
+
+    $this->actingAs(scopeUser('es-only', ['es']));
+    $spanish = submissionsOf(['shared'])->count();
+
+    $this->actingAs(scopeUser('both', ['en', 'es']));
+
+    expect([$spanish, submissionsOf(['shared'])->count()])->toBe([1, 3]);
+});
