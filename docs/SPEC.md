@@ -89,7 +89,7 @@ The add-on uses core's own rule for the submit request, `Site::findByUrl(URL::pr
 | Surface | Behavior |
 | --- | --- |
 | `{{ form:create }}` and the other form tags | Resolve the form for `Site::current()`. If the form is not assigned, behave per `not_assigned` (below). Otherwise the tag renders the resolved view, so title and the rest follow the site. Mechanism: seed the `form-{handle}` Blink key with the resolved view early in the request (spike 3). |
-| Submit | Middleware on the form action route, after route binding, replaces the bound `form` with the resolved view for the request's site. A form not assigned to that site is a 404, matching core's missing-form 404. Because the controller reads `store()` and builds the submission from the bound object, the override of `store` and the email configs reach core with no change to core. Mechanism **unverified** (spike 5). |
+| Submit | Middleware on the form action route, after route binding, replaces the bound `form` with the resolved view for the request's site. A form not assigned to that site is a 404, matching core's missing-form 404. Because the controller reads `store()` and builds the submission from the bound object, the override of `store` and the email configs reach core with no change to core. Verified through the real controller (spike 5). |
 | Recording the site | A `FormSubmitted` listener sets a reserved key on the submission data (`_site`). It runs before save and before emails are queued. Request values starting with `_` are treated by core as parameters, and only blueprint fields are processed into data, so a visitor cannot inject the key. |
 | Email | The submission's form is the resolved view, so `SendEmails` reads the site's `email` list with no hook into core. The site passed to the job is core's own, already the same value. |
 | REST and GraphQL | An optional `site` filter limits form listings to forms assigned to it. Without it, behavior is core's. Phase 3. |
@@ -147,7 +147,7 @@ Each phase ends with a host-bound test run in `statamic-multisite-forms-host` (`
 2. **Querying `_site`.** Resolved (#35); see the results below.
 3. **Tag resolution.** Resolved (#36); see the results below.
 4. **Submission listing scope.** Resolved (#37); see the results below.
-5. **Resolved view through the controller.** A resolved clone as the bound `form`: does `store()`, `makeSubmission()` and the queued email job read the overrides, and does the submission file stay in the form's own folder?
+5. **Resolved view through the controller.** Resolved (#38); see the results below.
 
 ## Open questions
 
@@ -226,3 +226,22 @@ The scoped builder reached the controllers with no controller override. Findings
 - The forms index count (`$form->querySubmissions()->count()`) would also be scoped, which is the intended behavior and avoids leaking other sites' counts.
 - The export was not requested. Without filters it reads `$form->submissions()`, which calls `FormSubmission::whereForm()`, which uses the same builder by reading the code; that is not a measurement.
 - Delete was not requested. It resolves its submission through `$form->submission($id)`, which calls the same `find()` the detail view uses.
+
+### Spike 5: a resolved form through the submit controller (#38)
+
+A probe added a route middleware to the real `FormController@submit` route that, when switched on, replaced the bound `form` parameter with a clone whose `email` and `store` differed from the file. It then posted a submission through the full request stack with the queue set to `sync` and the mailer faked. The probe read the email config core handed to each mailable, because the fake mailer records a mailable before core's `build()` sets recipients.
+
+| Run | Email config handed to the mailable | Submissions stored |
+| --- | --- | --- |
+| A, control: middleware off | `base@example.com` with subject `Base` | 1 |
+| B: middleware swaps in the clone | `es@example.com` with subject `ES` | still 1 (nothing new stored) |
+
+Also observed: the form file on disk kept `base@example.com` and `store: true`; the stored submission lives in the form's own folder (`spike_s`); the clone kept the base handle, so the action URL and the folder are unchanged.
+
+Route middleware order for that route was `HandlePrecognitiveRequests`, `EncryptCookies`, `AddQueuedCookiesToResponse`, `StartSession`, `ShareErrorsFromSession`, `ThrottleRequests:statamic.forms`, `SubstituteBindings`, then the probe middleware. The swap ran after binding, which is the order the design needs.
+
+Not covered, and each is a limit on this result:
+
+- The probe attached its middleware to the route object. Attaching from an add-on, through a middleware group, was not tried. Group middleware is sorted by Laravel's priority list, so a class outside the list should land after `SubstituteBindings`, but that is reasoning, not a measurement.
+- CSRF protection (`PreventRequestForgery`) was removed from the probe route to submit without a token. The design does not touch it.
+- The first two attempts returned 419 and a mail check that saw no mail even in the control. Both instruments were fixed before any result was read, and the table above is from the run where the control produced the base recipient.
