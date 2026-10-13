@@ -264,7 +264,7 @@ Oldest first, one entry per closed decision, so **a new entry is appended to the
 
 **Residual.** Saving the screen keeps an existing assignment to a site the editor cannot view (measured in #101): the field lists that site by its handle rather than its name, and posts it back with the rest. An editor can still remove it from the field on purpose, as with any selected site.
 
-**Companion.** #85; measurement in #101. Earlier decision: #70.
+**Companion.** #85; measurement in #101. Earlier decision: #70. Superseded for forms by #118, once #77 removed the `configure forms` bypass.
 
 
 ## 2026-10-13: An invalid `not_assigned` value is logged at boot, not thrown (#90)
@@ -462,3 +462,15 @@ The adversarial review of this change found an older gap in the id rule, reprodu
 **Residual.** A write that dispatches no event, such as `saveQuietly()` or `deleteQuietly()`, leaves the plan as it was until the request ends; the add-on's own quiet save is in the `multisite-forms:attribute` command, where the scope does not apply, and core's is the removal of temporary attachments, which changes neither a submission's site nor whether it exists. A quiet write in a Control Panel request can therefore leave a submission hidden or shown as the plan had it: a new unattributed one hidden, or one the plan keeps by id shown after its site changes or another form's submission takes its id. Core's Control Panel makes no such write. In console, `request()` lasts the process, so a plan would outlast one job only where the scope applies there, which is only under an empty `statamic.cp.route`. Measured against core's Stache builder only.
 
 **Companion.** #123. Earlier decisions: #78, #122.
+
+## 2026-10-13: Saving a form's sites may not produce a form its saver could not edit (#118)
+
+**Decision.** For a non-super user, a save of a form's Sites field is refused when the selection names a site the user cannot access, or when it is empty and the user does not cover every configured site. A super user may save any configured sites, and an empty list. This supersedes #85 for forms. The build is #138.
+
+**Why.** #85 let the Sites field accept any configured site because `configure forms` was a structural permission covering every form, as core's collection sites are. #77 removed that bypass: editing, deleting and configuring a form's fields need every site the form lists, or every configured site for a global form. Core's `FormsController::update` authorizes `edit` before it validates, so an editor who reaches a save already covers the form's current sites; refusing additions and refusing any inaccessible handle are therefore the same rule. Without it, an `en`-only editor could clear the field on an `en`-only form in one click, publishing it to every site and losing the right to edit it, or add `es` with a forged request (core's `sites` fieldtype offers only the sites the editor may view). One rule covers both: the saved assignment must be one the saver could still edit.
+
+**Rejected.** Keeping #85: forms no longer match collections on site access (#54, #77), so the consistency it bought is gone, and it allows a scoped editor to publish a form to sites they cannot access. Allowing an empty list for a scoped editor: it is the case reachable in the user interface, and it publishes the form to every site.
+
+**Residual.** Field validation runs on the Control Panel save only, so a save in code or from the console is not checked. Forms already widened or made global this way are not found or reverted. Duplicating a form the creator does not cover is #117's.
+
+**Companion.** #118; build in #138. Earlier decisions: #42, #77, #85.
