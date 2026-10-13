@@ -214,3 +214,15 @@ Oldest first, one entry per closed decision, so **a new entry is appended to the
 
 **Companion.** #57. Related: #42, #62.
 
+
+## 2026-10-13: The form tags are gated by a subclass of core's tags, not by a Blink seed alone (#73)
+
+**Decision.** The add-on registers `FormTags`, a subclass of core's `Statamic\Forms\Tags`, under core's `form` handle. Each tag that reads a form resolves it for the page's site; an unassigned form renders nothing (an empty string, `false`, or an empty list, matching what core's tag returns) or aborts with 404, per `not_assigned`. The warning for `empty` is logged at `warning` level, once per form and site per request.
+
+**Why.** The spec's mechanism, seeding core's `form-{handle}` Blink key with the site's view (spike 3), cannot meet the ticket alone. Core's `formHandle()` puts a form passed in from context straight into that key, replacing the seed, so a form handed to the tag as an object would render on every site. And a missing form makes core throw (`getForm()`), so nothing seeded can make the tag render empty. Resolving inside the tag closes both and needs no early-request hook. Once per request at `warning` keeps a shared layout to one line per page view while still surfacing an authoring slip.
+
+**Rejected.** Seeding Blink from a middleware: misses the context case and cannot render empty. Seeding every form on every front-end request: the same gaps, plus a lookup of every form per request. Logging every render: a layout with the form in several places floods the log. Logging at `debug`: hides the authoring slip the warning exists to show.
+
+**Residual.** Another add-on that also replaces the `form` tag would conflict with this one; whichever registers last wins.
+
+**Companion.** #73. Earlier decision: #39. Spec: `docs/SPEC.md`.
