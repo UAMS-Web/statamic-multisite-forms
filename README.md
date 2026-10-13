@@ -16,7 +16,7 @@ Early development. Site assignment is in progress: a form's settings screen has 
 
 - PHP 8.4 or later
 - Statamic (`statamic/cms`) 6.35 or later, in a multisite install
-- Submissions in Statamic's flat files, or in a database through `statamic/eloquent-driver`. The database driver is verified on SQLite only; MySQL and PostgreSQL are not verified yet.
+- Submissions in Statamic's flat files, or in a database through `statamic/eloquent-driver`. The database driver is verified on SQLite, MySQL 9.7.2 and PostgreSQL 18.0; MariaDB is not verified yet.
 
 ## Installation
 

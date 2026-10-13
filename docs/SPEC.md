@@ -132,7 +132,7 @@ None added in the first release. Core's `FormSubmitted`, `SubmissionSaved`, `For
 | The submit middleware runs before or after route binding differently across versions. | Test in the host on the lowest and latest supported version. |
 | A site-denying gate callback is overridden by core's policy `before`, which returns true for `configure forms`. | The callback is a global `Gate::before()`, which Laravel runs before any policy (`Gate::raw()`); it returns nothing for super users and for allowed sites. Tests cover a super user, a `configure forms` user and a plain viewer. |
 | `_site` collides with a user field. | Underscore-prefixed keys are core's parameter namespace and cannot be blueprint handles. |
-| Submissions are stored in the database through `statamic/eloquent-driver`, where `_site` is a JSON path rather than a Stache index. | Measured on SQLite, from a console (spike 6) and through Control Panel listing, detail and export requests (spike 8). MySQL and PostgreSQL compile the same query to their own JSON functions and are not measured; the README states the verified scope. |
+| Submissions are stored in the database through `statamic/eloquent-driver`, where `_site` is a JSON path rather than a Stache index. | Measured on SQLite, from a console (spike 6) and through Control Panel listing, detail and export requests (spike 8), and on MySQL 9.7.2 and PostgreSQL 18.0, whose grammars compile the JSON path to their own functions with the same results (spike 9). Volume and indexing a JSON path are not measured. |
 | Forms are stored in the database through `statamic/eloquent-driver`, whose form class adds a model the resolved view does not copy. | Measured (spike 7): the view carries the same values as its base form. It is not an instance of the driver's class and has no `model()`; whether to close that is #107. |
 
 ## Phasing
@@ -154,7 +154,7 @@ Each phase ends with a host-bound test run in `statamic-multisite-forms-host` (`
 3. **Tag resolution.** Resolved (#36); see the results below.
 4. **Submission listing scope.** Resolved (#37); see the results below.
 5. **Resolved view through the controller.** Resolved (#38); see the results below.
-6. **The Eloquent submissions driver.** Resolved on SQLite (#53), and through Control Panel requests (#65); see the results below.
+6. **The Eloquent submissions driver.** Resolved on SQLite (#53), through Control Panel requests (#65), and on MySQL and PostgreSQL (#66); see the results below.
 7. **The resolved view under the Eloquent forms driver.** Resolved (#83); see the results below. Its one gap is a decision in #107.
 
 ## Open questions
@@ -327,4 +327,36 @@ The control removed the add-on's extender with `app()->forgetExtenders()` on the
 
 The unattributed and empty-site submissions are hidden because the user does not cover every site the form is assigned to (#40, #130); spike 4 left the export unrequested, and on this driver it is scoped too. `multisite-forms:attribute {form} en` was then run on the same rows: the dry run listed `none` and `blank` and changed nothing, the real run wrote `"_site":"en"` into both rows' `data` and left `en` and `es` as they were, and a second run attributed 0 (#140).
 
-Not covered: MySQL and PostgreSQL (#66), and volume. Measured on Windows 11 with `statamic/cms` v6.35.1, Laravel 13.35.0 and PHP 8.4.20; macOS is not yet measured.
+Not covered: volume. MySQL and PostgreSQL are spike 9. Measured on Windows 11 with `statamic/cms` v6.35.1, Laravel 13.35.0 and PHP 8.4.20; macOS is not yet measured.
+
+### Spike 9: `_site` and the scope on MySQL and PostgreSQL (#66)
+
+Spikes 6 and 8 ran on SQLite. The host was switched temporarily to `statamic/eloquent-driver` v5.12.3 (commit `50c19165`) with `form_submissions.driver` set to `eloquent`, and the same probe test was run twice, once against MySQL 9.7.2 and once against PostgreSQL 18.0, each in a throwaway database that was dropped afterwards; the host was then restored. Each run printed the connection's driver, the server version and the database name, so neither could have fallen back to SQLite. Five submissions were saved to a form assigned to `en` and `es`: `a` and `d` with `_site: en`, `b` with `_site: es`, `c` with no `_site`, and `e`, whose row was edited to hold `"_site":""` (#130). Each table held five rows and the form's submissions folder held no files.
+
+Both engines returned the same answers, which are also the answers spike 6 recorded on SQLite:
+
+| Query | MySQL 9.7.2 | PostgreSQL 18.0 |
+| --- | --- | --- |
+| `where('form', ...)` alone | `a`, `b`, `c`, `d`, `e` | `a`, `b`, `c`, `d`, `e` |
+| `where('_site', 'en')` | `a`, `d`; `count()` returns 2 | `a`, `d`; `count()` returns 2 |
+| `where('_site', 'es')` | `b` | `b` |
+| `whereIn('_site', ['en', 'es'])` | `a`, `b`, `d` | `a`, `b`, `d` |
+| `whereNull('_site')` | `c` | `c` |
+| `where('_site', '')` | `e` | `e` |
+| Control: `where('_site', 'xx')` | none | none |
+
+The driver's builder compiles the JSON path differently on each engine. On MySQL, `where` and `whereIn` read ``json_unquote(json_extract(`data`, '$."_site"'))``, and `whereNull` reads ``json_extract(`data`, '$."_site"') is null OR json_type(json_extract(`data`, '$."_site"')) = 'NULL'``. On PostgreSQL, both read `"data"->>'_site'`, with `is null` for `whereNull`. On both, a missing key reads as null and an empty string does not, which is what #130 relies on.
+
+The scope was then exercised through Control Panel requests, as in spike 8, with the extender removed for the control:
+
+| Request, as a user with `access en site` only | Scope off (control) | Scope on, both engines |
+| --- | --- | --- |
+| Listing | `a`, `b`, `c`, `d`, `e` | `a`, `d` |
+| Detail view of `b` (`es`), through `find()` | 200 | 404 |
+| Detail view of `a` (`en`) | 200 | 200 |
+| Detail view of `c` (no site) | 200 | 404 |
+| JSON export, through `whereForm()` | `a`, `b`, `c`, `d`, `e` | `a`, `d` |
+
+A user with access to both sites listed `a`, `b`, `c` and `d`: the unattributed `c` shows, because they cover every site the form is assigned to, and `e`, with an empty site, stays hidden (#130). The scoped SQL was `(<_site path> in (?) or 0 = 1) and form = ?` for the `en`-only user, whose unattributed branch is empty, and `(<_site path> in (?, ?) or <_site path> is null) and form = ?` for the user covering both sites. `find()` added `and id = ?` to the same group. `multisite-forms:attribute {form} en` listed `c` and `e` in a dry run, attributed both, and attributed 0 on a second run, on each engine.
+
+Not covered: MariaDB, which Laravel compiles with its own grammar; other server versions; volume and indexing a JSON path. Measured on Windows 11 with `statamic/cms` v6.35.1, Laravel 13.35.0 and PHP 8.4.20; macOS is not yet measured.
