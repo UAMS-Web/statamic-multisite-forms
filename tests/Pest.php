@@ -11,6 +11,23 @@
 
 declare(strict_types=1);
 
+use Statamic\Facades\Site;
+use Statamic\Sites\Site as SiteObject;
 use UAMSWeb\MultisiteForms\Tests\TestCase;
 
 pest()->extend(TestCase::class)->in('Integration');
+
+/**
+ * A configured site by handle, for a test that needs the site object.
+ *
+ * @throws RuntimeException When the test configured no site with that handle.
+ */
+function configuredSite(string $handle): SiteObject
+{
+    $site = Site::get($handle);
+    if (! $site instanceof SiteObject) {
+        throw new RuntimeException("The test configured no [{$handle}] site.");
+    }
+
+    return $site;
+}
