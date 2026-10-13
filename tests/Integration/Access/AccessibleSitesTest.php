@@ -52,10 +52,10 @@ function formsEditor(string $id, array $sites): User
 /**
  * Save the form's settings with the given sites, or without a sites value for null.
  *
- * @param  array<array-key, mixed>|null  $sites
+ * @param  array<array-key, mixed>|string|null  $sites
  * @return TestResponse<Response>
  */
-function saveSites(TestCase $case, ?array $sites): TestResponse
+function saveSites(TestCase $case, array|string|null $sites): TestResponse
 {
     $payload = ['title' => 'Contact', 'honeypot' => 'trap', 'store' => false, 'email' => []];
     if ($sites !== null) {
@@ -102,7 +102,7 @@ it('refuses a site the user cannot access, naming it, and leaves the file alone'
     'only another site' => [['es']],
 ]);
 
-it('refuses an empty or missing selection from a user who cannot access every site', function (?array $sites): void {
+it('refuses an empty or missing selection from a user who cannot access every site', function (array|string|null $sites): void {
     $this->actingAs(formsEditor('en-only', ['en']));
 
     saveSites($this, $sites)
@@ -113,6 +113,9 @@ it('refuses an empty or missing selection from a user who cannot access every si
 })->with([
     'an empty selection' => [[]],
     'no sites value sent' => [null],
+    'an empty string' => [''],
+    'a blank string, which the Control Panel trims to an empty one' => [' '],
+    'a list holding only a blank handle' => [[' ']],
 ]);
 
 it('lets a user who can access every site save any sites, or none', function (?array $sites, mixed $saved): void {
@@ -145,6 +148,43 @@ it('passes any selection when no user is signed in', function (): void {
 
     expect($failed)->toBeFalse();
 });
+
+it('leaves a selection of entries that are not handles to the configured sites rule', function (array $sites): void {
+    $this->actingAs(formsEditor('en-only', ['en']));
+
+    $messages = [];
+    new AccessibleSites()->validate('sites', $sites, static function (string $message) use (&$messages): void {
+        $messages[] = $message;
+    });
+
+    expect($messages)->toBe([]);
+})->with([
+    'a number' => [[123]],
+    'a nested list' => [[['es']]],
+    'a nested list beside a blank handle' => [[' ', ['es']]],
+]);
+
+it('counts a blank handle as no site even when nothing trimmed it first', function (): void {
+    $this->actingAs(formsEditor('en-only', ['en']));
+
+    $messages = [];
+    new AccessibleSites()->validate('sites', [' '], static function (string $message) use (&$messages): void {
+        $messages[] = $message;
+    });
+
+    expect($messages)->toHaveCount(1)->and($messages[0])->toStartWith('Choose the sites this form belongs to.');
+});
+
+it('lets a user who can access every site, or a super user, send no sites value', function (bool $super): void {
+    $this->actingAs($super ? superUser() : formsEditor('both', ['en', 'es']));
+
+    saveSites($this, null)->assertOk();
+
+    expect(savedSites())->toBeNull();
+})->with([
+    'every site' => [false],
+    'super user' => [true],
+]);
 
 it('leaves a handle naming no configured site to the configured sites rule', function (): void {
     $this->actingAs(formsEditor('en-only', ['en']));

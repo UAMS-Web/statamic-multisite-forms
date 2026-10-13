@@ -24,6 +24,10 @@ use Statamic\Sites\Site as SiteObject;
  */
 final class AccessibleSites implements ValidationRule
 {
+    // AccessibleSitesTest's missing-selection row fails when this is false, shown by
+    // hand (#138), but a property default is not an executable line, so the coverage
+    // driver links no test to the mutant and it is never run.
+    // @pest-mutate-ignore: TrueToFalse
     /** Run the rule when the value is missing or empty too. */
     public bool $implicit = true;
 
@@ -37,9 +41,18 @@ final class AccessibleSites implements ValidationRule
             return;
         }
 
-        $handles = array_values(array_filter((array) $value, is_string(...)));
+        $entries = (array) $value;
+
+        // A blank handle saves as no site, so the form would be global (the Control
+        // Panel trims " " to "", which neither `array` nor ConfiguredSites checks)
+        $handles = array_filter($entries, static fn (mixed $handle): bool => is_string($handle) && trim($handle) !== '');
 
         if ($handles === []) {
+            // An entry that is not a handle at all is ConfiguredSites' to report
+            if (array_filter($entries, static fn (mixed $entry): bool => ! is_string($entry)) !== []) {
+                return;
+            }
+
             if (! SiteAccess::canAccessAll($user, SiteAccess::allHandles())) {
                 $fail('Choose the sites this form belongs to. Leaving :attribute empty would put it on every site, including sites you cannot access.');
             }
