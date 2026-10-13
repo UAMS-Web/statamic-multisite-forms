@@ -278,3 +278,16 @@ Oldest first, one entry per closed decision, so **a new entry is appended to the
 **Residual.** The error is logged on every boot until the value is fixed, which is one line per request. A log nobody reads still reports nothing, so the page that meets an unassigned form keeps failing loudly.
 
 **Companion.** #90. Earlier decision: #73.
+
+
+## 2026-10-13: Templates check a form's site with a `form:assigned` tag (#60)
+
+**Decision.** `{{ form:assigned in="contact" }}` answers whether a form renders on the page's site: true for a form assigned to it or one with no sites, false for a form assigned elsewhere or a missing one. As a single tag it returns that boolean, for an Antlers `if` or `Statamic::tag('form:assigned')->fetch()` in Blade; as a tag pair it renders its contents only when the form is assigned. It never aborts or logs, whatever `not_assigned` says.
+
+**Why.** It follows core's own `form:errors`, which is a boolean as a single tag and a conditional block as a pair, so it reads like the tags it sits beside and works in Antlers, Blade components and fetched form. It resolves the form exactly as the gated tags do, through the same resolver and `Site::current()`, so it cannot disagree with what `form:create` renders.
+
+**Rejected.** A variable injected into every view: it needs a form handle to mean anything, so it would be one variable per form, computed on every page whether or not a template reads it. A single tag only: an Antlers condition covers it, but a pair is the shorter form for wrapping markup and costs one branch. Throwing for a missing form, as `form:create` does: the check is for deciding what to show, and a template asking about a form that does not exist wants the answer "no".
+
+**Residual.** The name takes precedence over a form whose handle is `assigned` in the `{{ form:{handle} }}` shorthand, as core's tag names already do for `create`, `errors` and the rest; such a form renders with `{{ form:create in="assigned" }}`.
+
+**Companion.** #60. Earlier decisions: #39, #73.

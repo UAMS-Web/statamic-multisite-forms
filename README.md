@@ -65,6 +65,36 @@ Without the guard, reading `$form['attrs']` fails on a site the form is not assi
 
 A form assigned to the page's site, and a form with no sites, render as Statamic renders them. A submit to a form from a site it is not assigned to always answers 404, whatever `not_assigned` says.
 
+## Checking a form's site in a template
+
+`form:assigned` answers whether a form renders on the page's site, so a template can hide what surrounds it, such as a heading or an introduction. It is true for a form assigned to the site or one with no sites, and false for a form assigned elsewhere or one that does not exist. It never aborts or logs, whatever `not_assigned` says.
+
+In Antlers, use it as a condition, or as a tag pair that renders its contents only when the form is assigned:
+
+```antlers
+{{ if {form:assigned in="contact"} }}
+    <h2>Contact us</h2>
+{{ /if }}
+
+{{ form:assigned in="contact" }}
+    <p>We reply within two working days.</p>
+{{ /form:assigned }}
+```
+
+In Blade, fetch it, or use the tag pair as a component:
+
+```blade
+@if (Statamic::tag('form:assigned')->params(['in' => 'contact'])->fetch())
+    <h2>Contact us</h2>
+@endif
+
+<s:form:assigned in="contact">
+    <p>We reply within two working days.</p>
+</s:form:assigned>
+```
+
+The tag names the form the way `form:create` does: with `in`, `handle`, `is`, `form` or `formset`, or from a form in the template's context. Like Statamic's own `form:create` and `form:errors`, its name takes precedence over a form whose handle is `assigned` in the `{{ form:assigned }}` shorthand; render such a form with `{{ form:create in="assigned" }}`.
+
 ## Development
 
 ```sh
