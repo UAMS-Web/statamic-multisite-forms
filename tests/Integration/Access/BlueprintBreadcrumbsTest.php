@@ -100,6 +100,19 @@ function linkedTitles(TestResponse $response): array
     return $titles;
 }
 
+/**
+ * The breadcrumb prop an Inertia response carries, or null.
+ *
+ * Read from the response's own props: inertia-laravel 2 merges shared props into
+ * them at render and 3 keeps them apart, so only this prop is compared.
+ */
+function breadcrumbProp(InertiaResponse $response): mixed
+{
+    $props = new ReflectionProperty(InertiaResponse::class, 'props')->getValue($response);
+
+    return is_array($props) ? ($props[BlueprintBreadcrumbs::PROP] ?? null) : null;
+}
+
 it('links only the forms whose editor the user may open', function (): void {
     // An es-only user may open only the es-only form's editor, so no other form is linked
     $this->actingAs(userWith('fields-es', ['access cp', 'configure form fields', 'access es site']));
@@ -170,11 +183,10 @@ it('leaves every other response alone', function (?string $routeName, bool $iner
         $request->setRouteResolver(static fn (): Route => $route);
     }
 
-    $response = $inertia ? new InertiaResponse('Page', [], ['additionalBreadcrumbs' => 'as given'], 'app') : new Response('plain');
+    $response = $inertia ? Inertia::render('Page', [BlueprintBreadcrumbs::PROP => 'as given']) : new Response('plain');
     BlueprintBreadcrumbs::preparing(new PreparingResponse($request, $response));
 
-    $props = $inertia ? new ReflectionProperty(InertiaResponse::class, 'props')->getValue($response) : null;
-    expect($props)->toBe($inertia ? ['additionalBreadcrumbs' => 'as given'] : null);
+    expect($response instanceof InertiaResponse ? breadcrumbProp($response) : $response->getContent())->toBe($inertia ? 'as given' : 'plain');
 })->with([
     'an Inertia page on another route' => ['statamic.cp.forms.edit', true],
     'an Inertia page with no route' => [null, true],
@@ -182,10 +194,10 @@ it('leaves every other response alone', function (?string $routeName, bool $iner
 ]);
 
 it('leaves a response alone whose request is not a Laravel request', function (): void {
-    $response = new InertiaResponse('Page', [], ['additionalBreadcrumbs' => 'as given'], 'app');
+    $response = Inertia::render('Page', [BlueprintBreadcrumbs::PROP => 'as given']);
     BlueprintBreadcrumbs::preparing(new PreparingResponse(SymfonyRequest::create('/cp/fields/blueprints/forms/spanish/edit'), $response));
 
-    expect(new ReflectionProperty(InertiaResponse::class, 'props')->getValue($response))->toBe(['additionalBreadcrumbs' => 'as given']);
+    expect(breadcrumbProp($response))->toBe('as given');
 });
 
 it('listens for responses being prepared', function (): void {
@@ -196,8 +208,9 @@ it('listens for responses being prepared', function (): void {
     $request->setRouteResolver(static fn (): Route => $route);
     $this->actingAs(superUser());
 
-    $response = new InertiaResponse('Page', [], [], 'app');
+    $response = Inertia::render('Page');
     event(new PreparingResponse($request, $response));
 
-    expect(new ReflectionProperty(InertiaResponse::class, 'props')->getValue($response))->toHaveKey(BlueprintBreadcrumbs::PROP);
+    // Nothing was pushed, so the filtered list is empty rather than absent
+    expect(breadcrumbProp($response))->toBe([]);
 });
