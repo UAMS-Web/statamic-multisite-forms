@@ -19,6 +19,12 @@ final class Overrides
     /** The form-file key that holds the rows. */
     public const string KEY = 'site_overrides';
 
+    /** The `store` value the editor saves for "Store". */
+    public const string STORE = 'true';
+
+    /** The `store` value the editor saves for "Don't store". */
+    public const string DO_NOT_STORE = 'false';
+
     /**
      * The first row for a site, or null when the form has none for it.
      *
@@ -52,7 +58,9 @@ final class Overrides
      * an empty email list falls back to the base form's, so a cell the editor
      * left blank never clears a site's title or stops its email. An overriding
      * email replaces the base list whole, because merging two recipient lists
-     * would mail people nobody named for that site.
+     * would mail people nobody named for that site. Store is read as a boolean
+     * written by hand or as the `'true'` or `'false'` the editor's button group
+     * saves; anything else falls back to the base form's.
      */
     public static function apply(SiteForm $view): void
     {
@@ -72,9 +80,21 @@ final class Overrides
             $view->email($email);
         }
 
-        $store = $row['store'] ?? null;
-        if (is_bool($store)) {
+        $store = self::storeOf($row['store'] ?? null);
+        if ($store !== null) {
             $view->store($store);
         }
+    }
+
+    /**
+     * A row's store setting as a boolean, or null when it sets none.
+     */
+    private static function storeOf(mixed $value): ?bool
+    {
+        return match ($value) {
+            true, self::STORE => true,
+            false, self::DO_NOT_STORE => false,
+            default => null,
+        };
     }
 }

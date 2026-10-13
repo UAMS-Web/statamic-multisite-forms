@@ -4,7 +4,7 @@ A Statamic add-on that makes forms per-site in a multisite install: site assignm
 
 ## Status
 
-Early development. Site assignment is in progress: a form's settings screen has a Sites field, a submit from a site the form is not assigned to answers 404, the form tags follow the `not_assigned` setting below, and a new submission records the site it was made from under `_site`. Per-site overrides of a form's title, email and store apply from the form file; the Control Panel editor for them is in progress. The rest of "What it will do" is the plan, not what ships today. It is free, has no editions, and is licensed under MIT.
+Early development. Site assignment is in progress: a form's settings screen has a Sites field, a submit from a site the form is not assigned to answers 404, the form tags follow the `not_assigned` setting below, and a new submission records the site it was made from under `_site`. Per-site overrides of a form's title, email and store apply from the form file and are edited in the form's settings screen. The rest of "What it will do" is the plan, not what ships today. It is free, has no editions, and is licensed under MIT.
 
 ## What it will do
 
@@ -86,7 +86,9 @@ site_overrides:
         subject: Consulta del sitio
 ```
 
-Here a submission from the English site is stored and emailed to `info@example.com`; one from the Spanish site is emailed to `info-es@example.com` only and is not stored. A row's `email` replaces the form's list rather than adding to it. An empty `title` or `email` in a row uses the form's own value, so leaving one blank never clears it for that site. Other keys in a row are ignored.
+Here a submission from the English site is stored and emailed to `info@example.com`; one from the Spanish site is emailed to `info-es@example.com` only and is not stored. A row's `email` replaces the form's list rather than adding to it. An empty `title` or `email` in a row uses the form's own value, so leaving one blank never clears it for that site. `store` is read as `true` or `false`, or as the strings `'true'` and `'false'` the Control Panel saves; anything else uses the form's setting. Other keys in a row are ignored.
+
+In the Control Panel, the rows are edited under **Site overrides** in the Sites section of a form's settings. Each row picks one site and sets any of the three values; its email list has the same columns as the form's own. A row for a site the form is not assigned to, or a second row for the same site, is refused when saving.
 
 ## Checking a form's site in a template
 

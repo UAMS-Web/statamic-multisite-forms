@@ -6,12 +6,18 @@ use Illuminate\Http\Response;
 use Illuminate\Testing\TestResponse;
 use Statamic\Facades\Form as FormFacade;
 use Statamic\Facades\YAML;
+use Statamic\Fields\Blueprint;
+use Statamic\Fields\Field;
 use Statamic\Fields\Value;
 use Statamic\Forms\Form;
 use Statamic\Forms\Tags;
+use Statamic\Http\Controllers\CP\Forms\FormsController;
 use Statamic\Sites\Site as SiteObject;
 use Statamic\Tags\Loader;
 use UAMSWeb\MultisiteForms\Forms\Assignment;
+use UAMSWeb\MultisiteForms\Forms\ConfigFields;
+use UAMSWeb\MultisiteForms\Forms\FormResolver;
+use UAMSWeb\MultisiteForms\Forms\Overrides;
 
 /**
  * The form settings screen gains a Sites section whose selection is saved to the
@@ -68,6 +74,19 @@ function settingsUrl(string $handle, string $route = 'forms.edit'): string
     }
 
     return $url;
+}
+
+/**
+ * The settings payload with override rows, as the screen submits them: each
+ * row's site a one-item list.
+ *
+ * @param  array<array-key, mixed>|string|null  $sites
+ * @param  list<array<string, mixed>>  $rows
+ * @return array<string, mixed>
+ */
+function overridesPayload(array|string|null $sites, array $rows): array
+{
+    return [...settingsPayload($sites), Overrides::KEY => $rows];
 }
 
 /**
@@ -160,7 +179,7 @@ it('does not add the field to any other section', function (): void {
     $props = screenProps($this->get(settingsUrl('contact'))->assertOk());
 
     expect(screenSection($props, 'Fields'))->not->toHaveKey('sites')
-        ->and(screenSection($props, 'Sites'))->toHaveCount(1);
+        ->and(screenSection($props, 'Sites'))->toHaveCount(2);
 });
 
 it('adds the section to every form, not only one handle', function (): void {
@@ -262,4 +281,175 @@ it('writes core keys exactly as core writes them, adding only the sites key', fu
             'email' => [['to' => 'base@example.com', 'subject' => 'Base']],
             'store' => false,
         ]);
+});
+
+it('adds a site overrides grid to the Sites section (#76)', function (): void {
+    $field = screenSection(screenProps($this->get(settingsUrl('contact'))->assertOk()), 'Sites')[Overrides::KEY] ?? [];
+
+    /** @var list<array{handle: string}> $columns */
+    $columns = $field['fields'] ?? [];
+
+    expect($field['type'] ?? null)->toBe('grid')
+        ->and($field['display'] ?? null)->toBe('Site overrides')
+        ->and(array_column($columns, 'handle'))->toBe(['site', 'title', 'store', 'email']);
+});
+
+it('saves override rows to the form file and shows them on the screen again (#76)', function (): void {
+    $es = [['to' => 'es@example.com', 'subject' => 'ES']];
+
+    $this->patchJson(settingsUrl('contact', 'forms.update'), overridesPayload(['en', 'es'], [
+        ['site' => ['es'], 'title' => 'Contacto', 'store' => Overrides::DO_NOT_STORE, 'email' => $es],
+    ]))->assertOk();
+
+    /** @var list<array<string, mixed>> $rows */
+    $rows = formFile('contact')[Overrides::KEY] ?? [];
+
+    expect($rows)->toHaveCount(1)
+        ->and($rows[0]['site'] ?? null)->toBe('es')
+        ->and($rows[0]['title'] ?? null)->toBe('Contacto')
+        ->and($rows[0]['store'] ?? null)->toBe(Overrides::DO_NOT_STORE)
+        ->and(data_get($rows, '0.email.0.to'))->toBe('es@example.com')
+        ->and(data_get($rows, '0.email.0.subject'))->toBe('ES');
+
+    /** @var array<string, mixed> $values */
+    $values = screenProps($this->get(settingsUrl('contact'))->assertOk())['values'];
+
+    expect(data_get($values, Overrides::KEY.'.0.title'))->toBe('Contacto')
+        ->and(data_get($values, Overrides::KEY.'.0.store'))->toBe(Overrides::DO_NOT_STORE)
+        ->and(data_get($values, Overrides::KEY.'.0.email.0.to'))->toBe('es@example.com');
+});
+
+it('resolves a saved row for its site, through the form the editor saved (#76)', function (): void {
+    $this->patchJson(settingsUrl('contact', 'forms.update'), overridesPayload(['en', 'es'], [
+        ['site' => ['es'], 'title' => 'Contacto', 'store' => Overrides::STORE],
+    ]))->assertOk();
+
+    $resolver = new FormResolver;
+    $form = storedForm('contact');
+
+    expect($resolver->resolve($form, 'es')?->title())->toBe('Contacto')
+        ->and($resolver->resolve($form, 'es')?->store())->toBeTrue()
+        ->and($resolver->resolve($form, 'en')?->title())->toBe('Contact')
+        ->and($resolver->resolve($form, 'en')?->store())->toBeFalse();
+});
+
+it('leaves store out of a row whose store is left unset, so the form keeps its own (#76)', function (): void {
+    $this->patchJson(settingsUrl('contact', 'forms.update'), overridesPayload(['en', 'es'], [
+        ['site' => ['es'], 'title' => 'Contacto', 'store' => null],
+    ]))->assertOk();
+
+    /** @var list<array<string, mixed>> $rows */
+    $rows = formFile('contact')[Overrides::KEY] ?? [];
+
+    expect($rows[0] ?? [])->not->toHaveKey('store');
+});
+
+it('refuses a second row for the same site, naming the site, and leaves the file alone (#76)', function (): void {
+    $this->patchJson(settingsUrl('contact', 'forms.update'), settingsPayload(['es']))->assertOk();
+    $before = formFile('contact');
+
+    $this->patchJson(settingsUrl('contact', 'forms.update'), overridesPayload(['en', 'es'], [
+        ['site' => ['es'], 'title' => 'Uno'],
+        ['site' => ['es'], 'title' => 'Dos'],
+    ]))
+        ->assertUnprocessable()
+        ->assertJsonValidationErrors([Overrides::KEY => 'Spanish has more than one override row. Keep one row per site.']);
+
+    expect(formFile('contact'))->toBe($before);
+});
+
+it('refuses a row for a site the form is not assigned to, naming the site (#76)', function (): void {
+    $this->patchJson(settingsUrl('contact', 'forms.update'), overridesPayload(['en'], [
+        ['site' => ['es'], 'title' => 'Contacto'],
+    ]))
+        ->assertUnprocessable()
+        ->assertJsonValidationErrors([Overrides::KEY => "Spanish has an override row but is not one of this form's sites."]);
+
+    expect(formFile('contact'))->not->toHaveKey(Overrides::KEY);
+});
+
+it('refuses a row naming a site the install does not define (#76)', function (): void {
+    $this->patchJson(settingsUrl('contact', 'forms.update'), overridesPayload(['en', 'es'], [
+        ['site' => ['nope'], 'title' => 'Nope'],
+    ]))
+        ->assertUnprocessable()
+        ->assertJsonValidationErrors(Overrides::KEY);
+});
+
+it('accepts a row for any site on a form with no sites (#76)', function (string $site): void {
+    $this->patchJson(settingsUrl('contact', 'forms.update'), overridesPayload([], [
+        ['site' => [$site], 'title' => 'Override'],
+    ]))->assertOk();
+
+    expect(data_get(formFile('contact'), Overrides::KEY.'.0.site'))->toBe($site);
+})->with(['en', 'es']);
+
+it('refuses a row with no site (#76)', function (): void {
+    $this->patchJson(settingsUrl('contact', 'forms.update'), overridesPayload(['en', 'es'], [
+        ['site' => [], 'title' => 'Nowhere'],
+    ]))->assertUnprocessable();
+
+    expect(formFile('contact'))->not->toHaveKey(Overrides::KEY);
+});
+
+it('gives an override email the same columns as core gives a form email (#76)', function (?string $sender): void {
+    config(['mail.from.address' => $sender]);
+
+    // Core builds its email columns inside a protected method, so they are read the way the screen reads them
+    $blueprint = new ReflectionMethod(FormsController::class, 'editFormBlueprint')
+        ->invoke(app(FormsController::class), storedForm('contact'));
+    if (! $blueprint instanceof Blueprint) {
+        throw new RuntimeException('Core built no settings blueprint.');
+    }
+
+    $email = $blueprint->field('email');
+    if (! $email instanceof Field) {
+        throw new RuntimeException('Core built no email field.');
+    }
+
+    expect(ConfigFields::emailFields())->toEqual($email->config()['fields'] ?? null);
+})->with([
+    'a sender address' => ['hello@example.com'],
+    'no sender address' => [null],
+]);
+
+it('configures the override grid and its columns for the screen (#76)', function (): void {
+    $field = screenSection(screenProps($this->get(settingsUrl('contact'))->assertOk()), 'Sites')[Overrides::KEY] ?? [];
+
+    /** @var list<array<string, mixed>> $list */
+    $list = $field['fields'] ?? [];
+    $columns = array_column($list, null, 'handle');
+
+    expect($field)->toMatchArray([
+        'mode' => 'stacked',
+        'add_row' => 'Add site override',
+        'instructions' => "Change the title, storing or email for one site. Anything a row leaves empty uses the form's own setting.",
+    ])
+        ->and($columns['site'] ?? [])->toMatchArray(['type' => 'sites', 'mode' => 'select', 'max_items' => 1, 'required' => true])
+        ->and($columns['title'] ?? [])->toMatchArray(['type' => 'text', 'instructions' => "Leave empty to use the form's title."])
+        ->and($columns['store'] ?? [])->toMatchArray([
+            'display' => 'Store Submissions',
+            'type' => 'button_group',
+            'clearable' => true,
+            'instructions' => "Leave unset to use the form's setting.",
+        ])
+        ->and($columns['email'] ?? [])->toMatchArray([
+            'type' => 'grid',
+            'mode' => 'stacked',
+            'add_row' => 'Add Email',
+            'instructions' => "Replaces the form's emails for this site. Leave empty to send the form's emails.",
+        ]);
+
+    /** @var list<array{handle: string}> $emailColumns */
+    $emailColumns = $columns['email']['fields'] ?? [];
+
+    expect(array_column($emailColumns, 'handle'))->toBe(array_column(ConfigFields::emailFields(), 'handle'));
+
+    /** @var list<array{value: string, label: string}>|array<string, string> $options */
+    $options = $columns['store']['options'] ?? [];
+
+    expect(json_encode($options))->toContain('"true"')
+        ->toContain('"Store"')
+        ->toContain('"false"')
+        ->toContain("Don't store");
 });
