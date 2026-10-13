@@ -10,3 +10,7 @@ composer ci    # Pint, Rector dry run, Larastan, Pest (Unit and Integration)
 ```
 
 Requires PHP 8.4 or later and `statamic/cms` 6.35 or later. The project conventions are in [`AGENTS.md`](AGENTS.md).
+
+## License
+
+MIT. See [`LICENSE`](LICENSE).

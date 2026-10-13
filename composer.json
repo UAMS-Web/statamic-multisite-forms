@@ -8,6 +8,7 @@
         "multisite"
     ],
     "type": "statamic-addon",
+    "license": "MIT",
     "homepage": "https://github.com/UAMS-Web/statamic-multisite-forms",
     "authors": [
         {
