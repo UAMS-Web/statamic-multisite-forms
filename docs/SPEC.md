@@ -60,23 +60,23 @@ email:
     subject: Website inquiry
 sites: [en, es]              # absent or empty = all sites
 site_overrides:
-  es:
+  - site: es
     title: Contacto
+    store: false
     email:
       - to: info-es@example.com
         subject: Consulta del sitio
-    store: false
 ```
 
 - `sites` assigns the form. A form listing one site is a per-site form; a form listing several is shared with the option to differ; no list is global.
-- `site_overrides` is keyed by site handle. Only `title`, `email` and `store` are recognized in the first release. Unknown keys are ignored, never errors.
-- **Resolution for a site:** `site_overrides[site][key]` if present, else the base value. An overriding `email` replaces the whole list; it is not merged, because merging two recipient lists silently sends mail to people nobody named for that site.
+- `site_overrides` is a list of rows, one per site, each with a `site` handle. This is the shape a grid field saves (spike 1), so the Control Panel editor needs no custom fieldtype. Only `title`, `email` and `store` are recognized in the first release. Unknown keys are ignored, never errors, and a second row for the same site is a validation error.
+- **Resolution for a site:** the value in the row whose `site` matches, if present, else the base value. An overriding `email` replaces the whole list; it is not merged, because merging two recipient lists silently sends mail to people nobody named for that site.
 - **Why not keyed maps under core's own keys.** `email: {en: [...], es: [...]}` would be read by core as two email configs named `en` and `es`. Keeping core's keys exactly as core defines them is what makes removal safe.
 - `success_message` and `redirect` are deliberately absent. Core has no such form keys: the redirect comes from tag parameters and `Form::getSubmissionRedirect()`. They become overridable only with a defined hook, as a later phase.
 
 ### Control Panel fields
 
-`Form::appendConfigFields('*', 'Sites', [...])` adds a **Sites** section to the form config screen: a sites selector for `sites`, and a grid or replicator for `site_overrides`. This uses core's own extension point, so no Control Panel view is replaced. Whether core round-trips these handles through its edit and save path, and whether a nested overrides field renders there, is **unverified** (spike 1).
+`Form::appendConfigFields('*', 'Sites', [...])` adds a **Sites** section to the form config screen: a sites selector for `sites`, and a grid or replicator for `site_overrides`. This uses core's own extension point, so no Control Panel view is replaced. Core's edit and save path round-trips both handles, including a grid nested in a grid (spike 1, below). Whether the Control Panel renders the nested grid in a browser was not checked.
 
 ## Site determination
 
@@ -143,7 +143,7 @@ Each phase ends with a host-bound test run in `statamic-multisite-forms-host` (`
 
 ### Spikes
 
-1. **Config round trip.** `appendConfigFields` with `sites` and a nested `site_overrides` field: does core's edit and save path persist both and render the nested field?
+1. **Config round trip.** Resolved (#34); see the results below.
 2. **Querying `_site`.** Does `FormSubmission::query()->where('_site', 'en')` filter correctly, and is it indexed?
 3. **Tag resolution.** Seeding the `form-{handle}` Blink key per request, versus another seam, so the tags see the resolved view without rebinding `Form::find()`.
 4. **Submission listing scope.** Which hook lets the Control Panel listing and the export apply the `_site` scope.
@@ -160,3 +160,21 @@ Each phase ends with a host-bound test run in `statamic-multisite-forms-host` (`
 ## Test plan
 
 A two-site fixture in the host: one form assigned to both sites with different recipients, and one assigned to a single site. Unit tests cover resolution order, the read-only view and the key survival round trip; Integration tests cover the gate callback and the `FormSubmitted` listener; host-bound tests cover the Control Panel config screen, the submit middleware, the tags and the emailed recipient. The `host-only-behavior-needs-a-host-run` rule applies to every phase after the first.
+
+## Spike results
+
+Each result names what was measured, where, and what it did not cover. Measured on Windows 11 with PHP 8.4.20, `statamic/cms` v6.35.1 and Laravel 13.35.0, in `statamic-multisite-forms-host`. macOS is not measured.
+
+### Spike 1: config round trip (#34)
+
+`Form::appendConfigFields('*', 'Sites', ...)` was registered with a `sites` field (the `sites` fieldtype) and a `site_overrides` grid whose rows hold a `site`, a `title`, a `store` toggle and a nested `email` grid. A probe then drove the same code path as `FormsController::edit()` and `update()`: built the edit blueprint, validated and processed a request body, merged the non-core values into the form, saved, reloaded from disk, and rebuilt the edit values.
+
+| Check | Result |
+| --- | --- |
+| The edit blueprint contains `sites` and `site_overrides`. | Yes |
+| `process()` returns both handles alongside core's. | Yes |
+| The file on disk after save. | `sites: [en]`, and `site_overrides` as a list of rows with the nested `email` list intact |
+| Reloaded form data and the values `edit()` would hand the screen. | Identical to what was saved |
+| Control: a handle that was never appended. | Absent from the blueprint |
+
+A grid saves a list of rows, not a map keyed by site, which is why the data model uses a list. Not covered: rendering in a browser, validation messages for the nested grid, and duplicate-site validation (the add-on must supply it).
