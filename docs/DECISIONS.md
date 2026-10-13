@@ -353,3 +353,15 @@ Oldest first, one entry per closed decision, so **a new entry is appended to the
 **Residual.** Three places in core still list every form by title, each through `Form::all()`, so a user sees the titles of forms on sites they cannot access, though following a link to one is now refused: the editor's breadcrumb (`FormBlueprintController::edit()`), the blueprints index for a user with `configure fields` and `configure form fields` (`BlueprintController::forms()`), and the command palette for a user with `configure fields` (`Palette::buildFields()`). Tracked in #124. A user with `configure fields` can also edit a global fieldset that a form's blueprint imports; fieldsets carry no sites, and that permission is not a form permission.
 
 **Companion.** #116. Earlier decisions: #77.
+
+## 2026-10-13: The Duplicate action is replaced under core's handle by one that also asks `view` (#117)
+
+**Decision.** `UAMSWeb\MultisiteForms\Actions\DuplicateForm` extends core's `Statamic\Actions\DuplicateForm` and adds `view` on the form to its `authorize()`. Statamic registers the actions under an add-on's `src/Actions` by handle while booting the add-on, after core has registered its own, and the class's short name gives it core's handle, `duplicate_form`, so it replaces core's entry. Running the action and listing it, for one form or several, both go through `authorize()`.
+
+**Why.** Core's action asks only `create` on the form class, so the gate never sees the form being copied, and a user with `configure forms` could copy a form of a site they cannot access, with its recipients, data and blueprint. Measured: with core's class registered again, the refusal tests answer 200 and copy the form.
+
+**Rejected.** A middleware on the form action route: it would have to read the posted action name and selections, which core's controller already parses. Binding core's class to the add-on's in the container: Statamic's registration by handle already replaces it, and two mechanisms for one replacement leave a reader unsure which one acts. Asking `edit` rather than `view`: the copy is a new form, and the ticket asks for `view`.
+
+**Residual.** A copy keeps its source's sites, so a user who may view a form shared with a site they cannot access, such as an `es`-only user on an `en` and `es` form, can create a form assigned to that site too. They cannot change the copy afterwards, since changing a form needs every one of its sites. Another add-on, or the host, registering its own `duplicate_form` after this one would replace it in turn.
+
+**Companion.** #117. Earlier decisions: #77, #79.

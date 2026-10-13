@@ -28,7 +28,8 @@ use UAMSWeb\MultisiteForms\Http\SubmitGate;
  * the form settings screen, the site rules on form and submission access in
  * the Control Panel and on its form fields editor, the gate on core's form
  * submit route, the listener that records a submission's site, and the one that
- * assigns a new form to its creator's sites;
+ * assigns a new form to its creator's sites. Its actions, such as the Duplicate
+ * action that replaces core's, are registered from `src/Actions` by Statamic;
  * the rest is added as the phases in the add-on's specification land.
  */
 class ServiceProvider extends AddonServiceProvider

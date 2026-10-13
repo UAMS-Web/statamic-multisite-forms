@@ -5,22 +5,24 @@ declare(strict_types=1);
 namespace UAMSWeb\MultisiteForms\Tests\Feature;
 
 use Illuminate\Support\Facades\File;
+use Illuminate\Testing\TestResponse;
 use Statamic\Contracts\Auth\User as UserContract;
 use Statamic\Facades\Form;
 use Statamic\Facades\Role;
 use Statamic\Facades\User;
+use Statamic\Fields\BlueprintRepository;
 use Tests\TestCase;
 
 /**
  * Host-bound: on a real multisite host, an `es`-only Control Panel user does not
  * see an `en`-only form on the forms index and cannot open the settings of an
  * `en`-and-`es` form or their fields, even with `configure forms` or
- * `configure form fields` (#77, #116).
+ * `configure form fields`, and cannot duplicate the `en`-only one (#77, #116, #117).
  *
  * The add-on's Integration suite covers the gate against a minimal Testbench app;
  * this run confirms it holds behind the host's full provider list, its own sites
- * and its Control Panel middleware. Form files and roles go to temporary paths, so
- * the host's own forms and roles are never written.
+ * and its Control Panel middleware. Form files, blueprints and roles go to temporary
+ * paths, so the host's own forms, blueprints and roles are never written.
  *
  * @command  php artisan test vendor/uams-web/statamic-multisite-forms/tests/Feature/FormSiteAccessTest.php
  */
@@ -29,6 +31,8 @@ final class FormSiteAccessTest extends TestCase
     private string $formsDirectory;
 
     private string $rolesFile;
+
+    private string $blueprintsDirectory;
 
     protected function setUp(): void
     {
@@ -39,6 +43,10 @@ final class FormSiteAccessTest extends TestCase
 
         $this->rolesFile = sys_get_temp_dir().'/msf-host-roles-'.uniqid('', true).'.yaml';
         Role::path($this->rolesFile);
+
+        // The Duplicate action writes the copy's blueprint, so blueprints go to a directory of this test's own
+        $this->blueprintsDirectory = sys_get_temp_dir().'/msf-host-blueprints-'.uniqid('', true);
+        app(BlueprintRepository::class)->setDirectories($this->blueprintsDirectory);
 
         foreach (['msf_host_english' => ['en'], 'msf_host_shared' => ['en', 'es']] as $handle => $sites) {
             $form = Form::make($handle);
@@ -52,6 +60,7 @@ final class FormSiteAccessTest extends TestCase
     {
         File::deleteDirectory($this->formsDirectory);
         File::delete($this->rolesFile);
+        File::deleteDirectory($this->blueprintsDirectory);
 
         parent::tearDown();
     }
@@ -115,5 +124,27 @@ final class FormSiteAccessTest extends TestCase
         $this->actingAs(User::make()->id('msf-host-fields-admin')->email('msf-host-fields-admin@example.com')->makeSuper());
 
         $this->get(cp_route('blueprints.forms.edit', 'msf_host_shared'))->assertOk();
+    }
+
+    /** The Duplicate action is refused for a form of another site, and copies one the user can view (#117). */
+    public function test_the_duplicate_action_follows_the_site_rules(): void
+    {
+        $this->actingAs($this->spanishUser('msf-host-es-duplicator', ['configure forms']));
+
+        $this->duplicate('msf_host_english', 'msf_host_copy_en')->assertForbidden();
+        $this->assertNull(Form::find('msf_host_copy_en'));
+
+        $this->duplicate('msf_host_shared', 'msf_host_copy_shared')->assertOk();
+        $this->assertSame(['en', 'es'], Form::find('msf_host_copy_shared')?->get('sites'));
+    }
+
+    /** Run the Duplicate action on a form, copying it to a new handle. */
+    private function duplicate(string $source, string $copy): TestResponse
+    {
+        return $this->postJson(cp_route('forms.actions.run'), [
+            'action' => 'duplicate_form',
+            'selections' => [$source],
+            'values' => ['title' => $copy, 'handle' => $copy],
+        ]);
     }
 }
