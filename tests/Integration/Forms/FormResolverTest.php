@@ -87,6 +87,17 @@ it('leaves the base form unchanged when its view is changed', function (): void 
         ->and($base->title())->toBe('Contact');
 });
 
+it('applies the site override row to the view it resolves (#75)', function (): void {
+    $base = resolvableForm(['en', 'es']);
+    $base->set('site_overrides', [['site' => 'es', 'title' => 'Contacto']]);
+
+    $resolver = new FormResolver;
+
+    expect($resolver->resolve($base, 'es')?->title())->toBe('Contacto')
+        ->and($resolver->resolve($base, 'en')?->title())->toBe('Contact')
+        ->and($base->title())->toBe('Contact');
+});
+
 it('reaches a driver form class through base(), not through the view', function (): void {
     // A driver binds its own subclass of core's Form, as statamic/eloquent-driver does (#107)
     $driverForm = new class extends Form

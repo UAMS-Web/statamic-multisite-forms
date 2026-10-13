@@ -4,7 +4,7 @@ A Statamic add-on that makes forms per-site in a multisite install: site assignm
 
 ## Status
 
-Early development. Site assignment is in progress: a form's settings screen has a Sites field, a submit from a site the form is not assigned to answers 404, the form tags follow the `not_assigned` setting below, and a new submission records the site it was made from under `_site`. The rest of "What it will do" is the plan, not what ships today. It is free, has no editions, and is licensed under MIT.
+Early development. Site assignment is in progress: a form's settings screen has a Sites field, a submit from a site the form is not assigned to answers 404, the form tags follow the `not_assigned` setting below, and a new submission records the site it was made from under `_site`. Per-site overrides of a form's title, email and store apply from the form file; the Control Panel editor for them is in progress. The rest of "What it will do" is the plan, not what ships today. It is free, has no editions, and is licensed under MIT.
 
 ## What it will do
 
@@ -64,6 +64,29 @@ Fetched with no template to render, as `Statamic::tag('form:create')->params(['i
 Without the guard, reading `$form['attrs']` fails on a site the form is not assigned to.
 
 A form assigned to the page's site, and a form with no sites, render as Statamic renders them. A submit to a form from a site it is not assigned to always answers 404, whatever `not_assigned` says.
+
+## Per-site title, email and store
+
+A form shared by several sites can differ on each for three settings: its `title`, its `email` recipients, and whether it `store`s submissions. Each site that differs gets one row under `site_overrides` in the form file; a site without a row, and any setting a row leaves out, uses the form's own value.
+
+```yaml
+# resources/forms/contact.yaml
+title: Contact
+store: true
+email:
+  - to: info@example.com
+    subject: Website inquiry
+sites: [en, es]
+site_overrides:
+  - site: es
+    title: Contacto
+    store: false
+    email:
+      - to: info-es@example.com
+        subject: Consulta del sitio
+```
+
+Here a submission from the English site is stored and emailed to `info@example.com`; one from the Spanish site is emailed to `info-es@example.com` only and is not stored. A row's `email` replaces the form's list rather than adding to it. An empty `title` or `email` in a row uses the form's own value, so leaving one blank never clears it for that site. Other keys in a row are ignored.
 
 ## Checking a form's site in a template
 
