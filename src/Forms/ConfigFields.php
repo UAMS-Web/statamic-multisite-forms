@@ -5,6 +5,7 @@ declare(strict_types=1);
 namespace UAMSWeb\MultisiteForms\Forms;
 
 use Statamic\Facades\Form;
+use UAMSWeb\MultisiteForms\Sites\ConfiguredSites;
 
 /**
  * The Sites section the add-on adds to every form's settings screen.
@@ -18,7 +19,7 @@ use Statamic\Facades\Form;
  */
 final class ConfigFields
 {
-    /** The section's display name, which is also how core keys it. */
+    /** The section's display name; core keys the section by its snake case, `sites`. */
     public const string SECTION = 'Sites';
 
     /**
@@ -42,6 +43,7 @@ final class ConfigFields
                 'type' => 'sites',
                 'instructions' => 'The sites this form belongs to. Leave it empty to use the form on every site.',
                 'mode' => 'select',
+                'validate' => ['new '.ConfiguredSites::class],
             ],
         ];
     }

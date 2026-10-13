@@ -6,7 +6,11 @@ use Illuminate\Http\Response;
 use Illuminate\Testing\TestResponse;
 use Statamic\Facades\Form as FormFacade;
 use Statamic\Facades\YAML;
+use Statamic\Fields\Value;
 use Statamic\Forms\Form;
+use Statamic\Forms\Tags;
+use Statamic\Sites\Site as SiteObject;
+use Statamic\Tags\Loader;
 use UAMSWeb\MultisiteForms\Forms\Assignment;
 
 /**
@@ -32,10 +36,10 @@ afterEach(function (): void {
 /**
  * The settings a core form screen submits, with `sites` set when given.
  *
- * @param  array<array-key, mixed>|null  $sites
+ * @param  array<array-key, mixed>|string|null  $sites
  * @return array<string, mixed>
  */
-function settingsPayload(?array $sites): array
+function settingsPayload(array|string|null $sites): array
 {
     $payload = [
         'title' => 'Contact',
@@ -193,6 +197,51 @@ it('leaves the sites key out of the file when no site is selected, so the form i
     'an empty selection' => [[]],
     'no sites value sent' => [null],
 ]);
+
+it('refuses a selection naming a site the install does not define, and leaves the file alone', function (array|string $sites): void {
+    $this->patchJson(settingsUrl('contact', 'forms.update'), settingsPayload(['es']))->assertOk();
+
+    $this->patchJson(settingsUrl('contact', 'forms.update'), settingsPayload($sites))
+        ->assertUnprocessable()
+        ->assertJsonValidationErrors('sites');
+
+    expect(formFile('contact')['sites'] ?? null)->toBe(['es']);
+})->with([
+    'an unknown handle' => [['nope']],
+    'a known handle beside an unknown one' => [['es', 'nope']],
+    'a handle that is not a string' => [[['es']]],
+    'a bare handle rather than a list' => ['nope'],
+]);
+
+it('renders the form tag of an assigned form, exposing its sites to the template', function (): void {
+    $this->patchJson(settingsUrl('contact', 'forms.update'), settingsPayload(['en', 'es']))->assertOk();
+
+    // With no content, core's tag returns the data a template would receive.
+    $tag = app(Loader::class)->load('form', [
+        'parser' => null,
+        'params' => ['in' => 'contact'],
+        'content' => '',
+        'context' => [],
+        'tag' => 'form:create',
+        'tag_method' => 'create',
+    ]);
+    if (! $tag instanceof Tags) {
+        throw new RuntimeException('The form tag did not load.');
+    }
+
+    $sites = data_get($tag->create(), 'form_config.sites');
+    $sites = $sites instanceof Value ? $sites->value() : $sites;
+    if (! is_iterable($sites)) {
+        throw new RuntimeException('The form tag exposed no sites.');
+    }
+
+    $handles = [];
+    foreach ($sites as $site) {
+        $handles[] = $site instanceof SiteObject ? $site->handle() : $site;
+    }
+
+    expect($handles)->toBe(['en', 'es']);
+});
 
 it('writes core keys exactly as core writes them, adding only the sites key', function (): void {
     $global = FormFacade::make('global_contact');

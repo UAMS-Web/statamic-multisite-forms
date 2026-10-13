@@ -2,7 +2,6 @@
 
 declare(strict_types=1);
 
-use Statamic\Facades\Site;
 use Statamic\Forms\Form;
 use UAMSWeb\MultisiteForms\Forms\FormResolver;
 use UAMSWeb\MultisiteForms\Forms\SiteForm;
