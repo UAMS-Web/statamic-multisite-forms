@@ -14,7 +14,8 @@ use Tests\TestCase;
 /**
  * Host-bound: on a real multisite host, an `es`-only Control Panel user does not
  * see an `en`-only form on the forms index and cannot open the settings of an
- * `en`-and-`es` form, even with `configure forms` (#77).
+ * `en`-and-`es` form or their fields, even with `configure forms` or
+ * `configure form fields` (#77, #116).
  *
  * The add-on's Integration suite covers the gate against a minimal Testbench app;
  * this run confirms it holds behind the host's full provider list, its own sites
@@ -97,5 +98,22 @@ final class FormSiteAccessTest extends TestCase
         $this->actingAs(User::make()->id('msf-host-admin')->email('msf-host-admin@example.com')->makeSuper());
 
         $this->get(cp_route('forms.edit', 'msf_host_shared'))->assertOk();
+    }
+
+    /** The fields screen of a form that also reaches en is refused too, configure form fields or not (#116). */
+    public function test_the_fields_screen_is_refused_without_every_site(): void
+    {
+        $this->actingAs($this->spanishUser('msf-host-es-fields', ['configure form fields']));
+
+        $this->getJson(cp_route('blueprints.forms.edit', 'msf_host_shared'))->assertForbidden();
+        $this->getJson(cp_route('blueprints.forms.edit', 'msf_host_english'))->assertForbidden();
+    }
+
+    /** A super user opens the same fields screen, so the refusal is the site rule's. */
+    public function test_a_super_user_opens_the_fields_screen(): void
+    {
+        $this->actingAs(User::make()->id('msf-host-fields-admin')->email('msf-host-fields-admin@example.com')->makeSuper());
+
+        $this->get(cp_route('blueprints.forms.edit', 'msf_host_shared'))->assertOk();
     }
 }
