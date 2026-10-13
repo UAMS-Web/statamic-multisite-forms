@@ -25,6 +25,10 @@ use UAMSWeb\MultisiteForms\Http\SubmitGate;
  */
 class ServiceProvider extends AddonServiceProvider
 {
+    // tests/Unit/ViteBuildTest.php fails when any entry of $vite is removed, shown by
+    // hand for each one (#82), but a property default is not an executable line, so
+    // the coverage driver links no test to these mutants and they are never run.
+    // @pest-mutate-ignore: RemoveArrayItem
     /**
      * The Vite build of the Control Panel assets. `input` and `publicDirectory`
      * must match `vite.config.js`; the built files are committed under
