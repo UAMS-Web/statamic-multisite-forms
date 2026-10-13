@@ -90,3 +90,13 @@ Oldest first, one entry per closed decision, so **a new entry is appended to the
 
 **Companion.** #11. The shared version is `UAMS-Web/uams-claude-skills#170`, blocked by #169.
 
+## 2026-10-12: A persistent multisite host serves the development loop (#16)
+
+**Decision.** A Statamic 6 host named `statamic-multisite-forms-host` lives in the maintainer's Herd directory and installs the add-on from a local checkout through a path repository. `tests/Feature/` holds host-bound tests that extend the host's `Tests\TestCase`; PHPStan excludes it and the package has no `Feature` suite. The procedure is `docs/DEVELOPMENT.md`.
+
+**Why.** Per-site forms behavior needs a real multisite, and Testbench boots a minimal one. A persistent, clearly named host means the host-app run the `host-only-behavior-needs-a-host-run` rule requires has somewhere to happen, and the existing `uams-statamic` host stays unmodified.
+
+**Rejected.** Pointing an existing project's `composer.json` at the add-on: it edits a real site and leaves a path repository behind. A throwaway host per run: a Composer create-project and a multisite conversion every time. Running `php please multisite` to convert: it hangs without a terminal.
+
+**Companion.** #16.
+

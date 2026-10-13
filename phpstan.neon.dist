@@ -72,6 +72,11 @@ parameters:
         - src
         - tests
 
+    # Host-bound tests extend the host application's `Tests\TestCase`, which does not exist in
+    # this package, so they cannot be resolved here. They run in the host (docs/DEVELOPMENT.md).
+    excludePaths:
+        - tests/Feature
+
     # Machine-generated files with no hand-written control flow (large
     # reference-data enums, for example) go under `analyse` so they stay in the
     # symbol table and their call sites remain type-checked, while PHPStan skips
