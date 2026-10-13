@@ -336,11 +336,75 @@ it("scopes a builder that extends core's Eloquent query builder", function (): v
     $this->actingAs(scopeUser('es-only', ['es']));
     onPath('/cp/forms');
 
+    $condition = null;
+
     /** @var EloquentQueryBuilder&SubmissionQueryBuilder&MockInterface $builder */
     $builder = Mockery::mock(EloquentQueryBuilder::class.', '.SubmissionQueryBuilder::class);
-    $builder->shouldReceive('where')->once()->andReturnSelf();
+    $builder->shouldReceive('where')->once()->with(Mockery::on(static function (mixed $argument) use (&$condition): bool {
+        $condition = $argument;
 
-    expect(SubmissionScope::apply($builder))->toBe($builder);
+        return $argument instanceof Closure;
+    }))->andReturnSelf();
+
+    expect(SubmissionScope::apply($builder))->toBe($builder)
+        ->and($condition)->toBeInstanceOf(Closure::class);
+
+    // The es-only user covers only the es-only form, so the group keeps es and that
+    // form's unattributed submission by id
+    $unattributed = scopeSubmissionId('spanish', null);
+
+    /** @var EloquentQueryBuilder&MockInterface $group */
+    $group = Mockery::mock(EloquentQueryBuilder::class);
+    $group->shouldReceive('whereIn')->once()->with('_site', ['es']);
+    $group->shouldReceive('orWhereIn')->once()->with('id', [$unattributed]);
+
+    /** @var Closure(EloquentQueryBuilder): void $condition */
+    $condition($group);
+});
+
+it('deletes every submission of a form a scoped user deletes, not only those they can read', function (): void {
+    $this->actingAs(userWith('es-configurer', ['access cp', 'configure forms', 'access es site']));
+
+    $this->deleteJson(scopeUrl('forms.destroy', 'spanish'))->assertOk();
+
+    onPath('/');
+    expect(submissionsOf(['spanish'])->count())->toBe(0)
+        ->and(submissionsOf(['shared'])->count())->toBe(3);
+});
+
+it('scopes again once a form has been deleted in the same request', function (): void {
+    $this->actingAs(scopeUser('es-only', ['es']));
+    onPath('/cp/forms');
+
+    $spanish = FormFacade::find('spanish');
+    if (! $spanish instanceof Form) {
+        throw new RuntimeException('No [spanish] form.');
+    }
+
+    $spanish->delete();
+
+    expect(submissionsOf(['shared'])->count())->toBe(1);
+});
+
+it('drops an unattributed id that a submission of an uncovered form also carries', function (): void {
+    // Copy the es-only form's unattributed submission's id onto an en submission of
+    // the en and es form, as a copied or imported file can
+    $id = scopeSubmissionId('spanish', null);
+    $shared = FormFacade::find('shared');
+    if (! $shared instanceof Form) {
+        throw new RuntimeException('No [shared] form.');
+    }
+
+    $clash = $shared->makeSubmission();
+    $clash->id($id);
+    $clash->set('name', 'clash');
+    $clash->set('_site', 'en');
+    $clash->save();
+
+    $this->actingAs(scopeUser('es-only', ['es']));
+
+    expect(listedNames($this, 'shared'))->toBe(['es'])
+        ->and(listedNames($this, 'spanish'))->toBe(['es']);
 });
 
 it('hides a stray submission of another site when the user covers every form', function (): void {

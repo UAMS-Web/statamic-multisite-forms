@@ -6,10 +6,13 @@ namespace UAMSWeb\MultisiteForms\Access;
 
 use Illuminate\Contracts\Foundation\Application;
 use Illuminate\Support\Collection;
+use Illuminate\Support\Facades\Event;
 use LogicException;
 use Statamic\Contracts\Auth\User as UserContract;
 use Statamic\Contracts\Forms\Submission;
 use Statamic\Contracts\Forms\SubmissionQueryBuilder;
+use Statamic\Events\FormDeleted;
+use Statamic\Events\FormDeleting;
 use Statamic\Facades\Form as FormFacade;
 use Statamic\Facades\User;
 use Statamic\Forms\Form;
@@ -37,9 +40,17 @@ use UAMSWeb\MultisiteForms\Forms\Assignment;
  * can sit inside a nested group, so the scope never puts `form` in a group. When
  * the user covers some forms but not others, it reads the ids of the unattributed
  * submissions of the covered forms with a top-level query, and keeps those ids.
+ *
+ * Deleting a form deletes its submissions through the same builder, so between
+ * core's `FormDeleting` and `FormDeleted` events the request reads unscoped; a
+ * form deleted from the Control Panel otherwise left behind the submissions its
+ * deleter could not see, and they came back with a new form of the same handle.
  */
 final class SubmissionScope
 {
+    /** The request attribute set while a form and its submissions are deleted. */
+    public const string DELETING = 'multisite-forms.deleting-form';
+
     // SubmissionScopeTest fails when this default is true, shown by hand (#78), but a
     // property default is not an executable line, so the coverage driver links no
     // test to the mutant and it is never run.
@@ -53,6 +64,15 @@ final class SubmissionScope
     public static function register(Application $app): void
     {
         $app->extend(SubmissionQueryBuilder::class, static fn (SubmissionQueryBuilder $builder): SubmissionQueryBuilder => self::apply($builder));
+
+        // Core dispatches FormDeleting without halting, so once it fires the delete
+        // runs; the flag lives on the request so it cannot outlast it.
+        Event::listen(FormDeleting::class, static function (): void {
+            request()->attributes->set(self::DELETING, true);
+        });
+        Event::listen(FormDeleted::class, static function (): void {
+            request()->attributes->remove(self::DELETING);
+        });
     }
 
     /**
@@ -60,7 +80,7 @@ final class SubmissionScope
      */
     public static function apply(SubmissionQueryBuilder $builder): SubmissionQueryBuilder
     {
-        if (self::$reading || ! Statamic::isCpRoute()) {
+        if (self::$reading || request()->attributes->get(self::DELETING) === true || ! Statamic::isCpRoute()) {
             return $builder;
         }
 
@@ -85,7 +105,7 @@ final class SubmissionScope
      * rather than by id, which saves reading every unattributed id on each request.
      *
      * @param  list<string>  $sites
-     * @param  array{all: bool, handles: list<mixed>}  $covered
+     * @param  array{all: bool, handles: list<mixed>, others: list<mixed>}  $covered
      */
     private static function scope(Builder|EloquentQueryBuilder $builder, array $sites, array $covered): void
     {
@@ -102,7 +122,7 @@ final class SubmissionScope
             return;
         }
 
-        $unattributed = self::unattributedIds($covered['handles']);
+        $unattributed = self::unattributedIds($covered['handles'], $covered['others']);
 
         $builder->where(static function (Builder|EloquentQueryBuilder $query) use ($sites, $unattributed): void {
             $query->whereIn('_site', $sites);
@@ -111,12 +131,13 @@ final class SubmissionScope
     }
 
     /**
-     * The handles of the forms whose every site the user can access, and whether that is every form.
+     * The handles of the forms whose every site the user can access, those of the
+     * other forms, and whether the first is every form.
      *
      * Core's form getter does not type its handle, so the handles are only passed on
      * to a query, never read.
      *
-     * @return array{all: bool, handles: list<mixed>}
+     * @return array{all: bool, handles: list<mixed>, others: list<mixed>}
      */
     private static function coveredForms(UserContract $user): array
     {
@@ -126,6 +147,7 @@ final class SubmissionScope
         // @pest-mutate-ignore: TrueToFalse
         $all = true;
         $handles = [];
+        $others = [];
 
         foreach (FormFacade::all() as $form) {
             // A form whose sites cannot be read is one the user is not known to cover
@@ -140,20 +162,31 @@ final class SubmissionScope
                 $handles[] = $form->handle();
             } else {
                 $all = false;
+                $others[] = $form->handle();
             }
         }
 
-        return ['all' => $all, 'handles' => $handles];
+        return ['all' => $all, 'handles' => $handles, 'others' => $others];
     }
 
     /**
-     * The ids of the submissions with no `_site` in the given forms.
+     * The ids of the submissions with no `_site` in the given forms, less any id a
+     * submission of one of the other forms also carries.
+     *
+     * An id is not unique across forms (it is the submission's file name, and a
+     * copied or imported file can repeat one), and the id rule is not tied to a
+     * form, so an id shared with a form the user does not cover is dropped.
      *
      * @param  list<mixed>  $forms
+     * @param  list<mixed>  $others
      * @return array<mixed>
      */
-    private static function unattributedIds(array $forms): array
+    private static function unattributedIds(array $forms, array $others): array
     {
+        // Without this return, an empty form list reads ids the exclusion below then
+        // drops, since every form is one of the others; it only saves the reads, so
+        // removing it is equivalent.
+        // @pest-mutate-ignore: RemoveEarlyReturn
         if ($forms === []) {
             return [];
         }
@@ -161,20 +194,48 @@ final class SubmissionScope
         self::$reading = true;
 
         try {
-            // apply() has already refused any other builder, and this read is unscoped
-            /** @var Builder|EloquentQueryBuilder $query */
-            $query = app(SubmissionQueryBuilder::class);
-            $query->whereIn('form', $forms);
-            $query->whereNull('_site');
+            $ids = self::idsOf($forms, static function (Builder|EloquentQueryBuilder $query): void {
+                $query->whereNull('_site');
+            });
 
-            // Not pluck('id'): core's Stache builder plucks its own `form::id` keys,
-            // which no `id` condition matches
-            /** @var Collection<array-key, Submission> $found */
-            $found = $query->get();
+            if ($ids === [] || $others === []) {
+                return $ids;
+            }
 
-            return $found->map(static fn (Submission $submission): mixed => $submission->id())->all();
+            // Without the id condition the read returns every id of the other forms, which
+            // drops the same ids; the condition only narrows the read, so removing it is
+            // equivalent.
+            // @pest-mutate-ignore: RemoveMethodCall
+            $shared = self::idsOf($others, static function (Builder|EloquentQueryBuilder $query) use ($ids): void {
+                $query->whereIn('id', $ids);
+            });
+
+            return array_filter($ids, static fn (mixed $id): bool => ! in_array($id, $shared, true));
         } finally {
             self::$reading = false;
         }
+    }
+
+    /**
+     * The ids of the submissions of the given forms that a condition keeps, read unscoped.
+     *
+     * @param  list<mixed>  $forms
+     * @param  callable(Builder|EloquentQueryBuilder): void  $condition
+     * @return array<mixed>
+     */
+    private static function idsOf(array $forms, callable $condition): array
+    {
+        // apply() has already refused any other builder, and $reading leaves this read unscoped
+        /** @var Builder|EloquentQueryBuilder $query */
+        $query = app(SubmissionQueryBuilder::class);
+        $query->whereIn('form', $forms);
+        $condition($query);
+
+        // Not pluck('id'): core's Stache builder plucks its own `form::id` keys,
+        // which no `id` condition matches
+        /** @var Collection<array-key, Submission> $found */
+        $found = $query->get();
+
+        return $found->map(static fn (Submission $submission): mixed => $submission->id())->all();
     }
 }
