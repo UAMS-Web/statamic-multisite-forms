@@ -18,7 +18,6 @@ use Statamic\Facades\User;
 use Statamic\Forms\Form;
 use Statamic\Query\Builder;
 use Statamic\Query\EloquentQueryBuilder;
-use Statamic\Statamic;
 use UAMSWeb\MultisiteForms\Forms\Assignment;
 
 /**
@@ -80,7 +79,7 @@ final class SubmissionScope
      */
     public static function apply(SubmissionQueryBuilder $builder): SubmissionQueryBuilder
     {
-        if (self::$reading || request()->attributes->get(self::DELETING) === true || ! Statamic::isCpRoute()) {
+        if (self::$reading || request()->attributes->get(self::DELETING) === true || ! self::isControlPanelRequest()) {
             return $builder;
         }
 
@@ -96,6 +95,38 @@ final class SubmissionScope
         self::scope($builder, SiteAccess::accessible($user), self::coveredForms($user));
 
         return $builder;
+    }
+
+    /**
+     * Whether the current request is for a Control Panel path.
+     *
+     * Core's `Statamic::isCpRoute()` compares the path with `statamic.cp.route` as
+     * configured, while core registers the Control Panel's routes under that value
+     * as a route prefix, which Laravel trims of slashes. So a route configured as
+     * `/cp` serves the Control Panel at `cp` while `isCpRoute()` is false on every
+     * request, which would leave every Control Panel read unscoped (#122). This
+     * trims the configured value the same way.
+     *
+     * The path is compared decoded, because the router matches routes against the
+     * decoded path: `/%63p/forms` reaches the Control Panel's forms page, while
+     * `path()` keeps it encoded and core's check is false on it.
+     *
+     * An empty route puts the Control Panel's routes at the root, where they
+     * collide with the front end. Every path then counts as a Control Panel one,
+     * which also scopes front-end and API reads for a signed-in non-super user:
+     * that hides submissions rather than showing them.
+     */
+    public static function isControlPanelRequest(): bool
+    {
+        $route = config('statamic.cp.route');
+        if (! config('statamic.cp.enabled') || ! is_string($route)) {
+            return false;
+        }
+
+        $prefix = trim($route, '/');
+        $path = trim(request()->decodedPath(), '/');
+
+        return $prefix === '' || $path === $prefix || str_starts_with($path, $prefix.'/');
     }
 
     /**

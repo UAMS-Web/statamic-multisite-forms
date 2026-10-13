@@ -16,6 +16,7 @@ use Statamic\Forms\Form;
 use Statamic\Query\EloquentQueryBuilder;
 use Statamic\Stache\Query\SubmissionQueryBuilder as StacheSubmissionQueryBuilder;
 use Statamic\Stache\Stores\Store;
+use Statamic\Statamic;
 use Statamic\Tags\FluentTag;
 use UAMSWeb\MultisiteForms\Access\SiteAccess;
 use UAMSWeb\MultisiteForms\Access\SubmissionScope;
@@ -446,3 +447,54 @@ it('treats a form it cannot read the sites of as one the user does not cover', f
     // Every form's es submission, and the unattributed one of the es-only form only
     expect(submissionsOf()->count())->toBe(4);
 });
+
+it('treats a path under the Control Panel route as a Control Panel request, however the route is slashed', function (string $route, string $path, bool $expected): void {
+    config(['statamic.cp.route' => $route]);
+    onPath($path);
+
+    expect(SubmissionScope::isControlPanelRequest())->toBe($expected);
+})->with([
+    'cp, the Control Panel itself' => ['cp', '/cp', true],
+    'cp, a page under it' => ['cp', '/cp/forms', true],
+    '/cp, a page under it' => ['/cp', '/cp/forms', true],
+    '/cp/, the Control Panel itself' => ['/cp/', '/cp', true],
+    'cp/, the Control Panel itself' => ['cp/', '/cp', true],
+    'a nested route' => ['/admin/cp', '/admin/cp/forms', true],
+    'a path that only starts with the route' => ['/cp', '/cpanel/forms', false],
+    'a front-end path' => ['/cp', '/contact', false],
+    'an API path' => ['/cp', '/api/forms/shared', false],
+    'an encoded Control Panel path' => ['/cp', '/%63p/forms', true],
+    'the site root' => ['cp', '/', false],
+    'an empty route, at the root' => ['', '/forms', true],
+]);
+
+it('is not a Control Panel request when the Control Panel is disabled or its route is not text', function (string $key, mixed $value): void {
+    config([$key => $value]);
+    onPath('/cp/forms');
+
+    expect(SubmissionScope::isControlPanelRequest())->toBeFalse();
+})->with([
+    'disabled' => ['statamic.cp.enabled', false],
+    'a route that is not text' => ['statamic.cp.route', null],
+]);
+
+it('scopes Control Panel reads under a route configured with a leading slash, where core would not', function (): void {
+    config(['statamic.cp.route' => '/cp']);
+    $this->actingAs(scopeUser('es-only', ['es']));
+    onPath('/cp/forms');
+
+    expect(Statamic::isCpRoute())->toBeFalse()
+        ->and(submissionsOf(['shared'])->count())->toBe(1);
+});
+
+it('scopes a Control Panel listing reached through a URL-encoded path', function (string $path): void {
+    $this->actingAs(scopeUser('es-only', ['es']));
+
+    /** @var list<array{id: string}> $rows */
+    $rows = $this->getJson($path)->assertOk()->json('data');
+
+    expect(namesOf($rows))->toBe(['es']);
+})->with([
+    'an encoded letter' => ['/%63p/forms/shared/submissions'],
+    'an encoded slash' => ['/cp%2Fforms/shared/submissions'],
+]);
