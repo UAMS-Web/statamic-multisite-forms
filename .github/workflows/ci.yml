@@ -23,3 +23,7 @@ jobs:
       - run: composer install --no-interaction --prefer-dist
 
       - run: composer ci
+
+      # Fails, naming the file, when a synced rule or skill was edited by hand.
+      - name: Check synced files
+        run: node .claude/skills/synced-files/scripts/check-synced-files.mjs
