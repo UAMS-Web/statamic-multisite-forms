@@ -40,6 +40,13 @@ it('never grants a handle that names no configured site, even to a super user', 
         ->and(SiteAccess::canAccess(userWith('fr-named', ['access fr site']), 'fr'))->toBeFalse();
 });
 
+it('lists the sites a user can access, in configured order', function (): void {
+    expect(SiteAccess::accessible(userWith('es-listed', ['access es site'])))->toBe(['es'])
+        ->and(SiteAccess::accessible(userWith('both-listed', ['access es site', 'access en site'])))->toBe(['en', 'es'])
+        ->and(SiteAccess::accessible(userWith('none-listed', [])))->toBe([])
+        ->and(SiteAccess::accessible(superUser()))->toBe(['en', 'es']);
+});
+
 it('lists the handles of every configured site', function (): void {
     expect(SiteAccess::allHandles())->toBe(['en', 'es']);
 });
