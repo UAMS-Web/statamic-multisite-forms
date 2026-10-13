@@ -425,3 +425,15 @@ Oldest first, one entry per closed decision, so **a new entry is appended to the
 **Residual.** Core's own uses of `isCpRoute()` are unchanged, so other core behavior under a slashed route or an encoded path is as core has it. Under an empty route, front-end and API reads by a signed-in non-super user are scoped as well, which hides submissions rather than showing them; that configuration already collides with the front end. A path with a doubled leading slash counts as a Control Panel one though the Control Panel's routes do not match it, as in core, which also errs toward scoping.
 
 **Companion.** #122. Earlier decisions: #49, #78.
+
+## 2026-10-13: The blueprints index and the command palette are filtered on the prepared response, as the breadcrumb is (#133)
+
+**Decision.** `UAMSWeb\MultisiteForms\Http\BlueprintListings` listens for `PreparingResponse`. On the `statamic.cp.blueprints.index` route, while the response is an Inertia response, it sets the `forms` page prop to core's `BlueprintController::forms()` less every form whose fields editor the user may not open. On the `statamic.cp.command-palette.index` route, where core's controller returns the palette as a collection, it removes the items linking to such an editor from that collection in place, keeping it a list. `UAMSWeb\MultisiteForms\Access\RefusedFormEditors` names the refused editors' URLs, built as core builds its links, for this listener and the breadcrumb's (#124).
+
+**Why.** Measured before the change, in the Testbench app: for an `es`-only user with `configure fields` and `configure form fields`, the index's `forms` prop and its HTML carried all four test forms' titles and editor links, and the palette's response linked all four forms' editors, each named by its blueprint's title, which defaults to one made from the form's handle. The palette is cached forever per user (`Palette::cacheKey()`), so filtering the response, not the cache, needs no invalidation and keeps the cache as core builds it. The rule is the editor's own, as for the breadcrumb, so every link left opens.
+
+**Rejected.** Replacing or extending core's controllers or palette: it ties the add-on to their internals. Adding to the palette's build through its public `add()`: it can only add items, not remove them. Reading the index's `forms` prop back from the Inertia response: the response has no public reader for it, so the listener asks core's controller for the same list again.
+
+**Residual.** The palette's search endpoint (`command-palette.search`) searches the `cp` search index, which is not filtered here; core's default for that index searches `content`, `users` and `addons` (`IndexManager::indexesConfig()`), so it holds no forms unless a host adds them. Another listener that changes the same prop or collection after this one would act on the filtered list.
+
+**Companion.** #133. Earlier decisions: #116, #124.

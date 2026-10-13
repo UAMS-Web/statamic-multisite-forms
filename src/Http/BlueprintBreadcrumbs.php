@@ -8,11 +8,9 @@ use Illuminate\Http\Request;
 use Illuminate\Routing\Events\PreparingResponse;
 use Illuminate\Routing\Route;
 use Illuminate\Support\Facades\Event;
-use Illuminate\Support\Facades\Gate;
 use Inertia\Response as InertiaResponse;
 use Statamic\CP\Breadcrumbs\Breadcrumbs;
-use Statamic\Facades\Form as FormFacade;
-use Statamic\Forms\Form;
+use UAMSWeb\MultisiteForms\Access\RefusedFormEditors;
 
 /**
  * Keeps forms the user may not open out of the form fields editor's breadcrumb (#124).
@@ -76,20 +74,14 @@ final class BlueprintBreadcrumbs
      */
     public static function openable(array $crumbs): array
     {
-        $refused = [];
-        /** @var Form $form */
-        foreach (FormFacade::all() as $form) {
-            if (Gate::denies('configure form fields', [$form])) {
-                $refused[] = cp_route('blueprints.forms.edit', $form->handle());
-            }
-        }
+        $refused = RefusedFormEditors::urls();
 
         $kept = [];
         foreach ($crumbs as $crumb) {
             if (is_array($crumb) && is_iterable($crumb['links'] ?? null)) {
                 $links = [];
                 foreach ($crumb['links'] as $link) {
-                    if (! is_array($link) || ! in_array($link['url'] ?? null, $refused, true)) {
+                    if (! RefusedFormEditors::isRefused($link, $refused)) {
                         $links[] = $link;
                     }
                 }
