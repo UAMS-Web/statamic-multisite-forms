@@ -59,6 +59,31 @@ it('keeps vite.config.js and the provider on the same inputs and output director
     expect($config)->toContain("publicDirectory: '".$vite['publicDirectory']."'");
 });
 
+it('lists in the provider every input vite.config.js builds and every entry the manifest holds', function (): void {
+    $vite = viteBuildProperty();
+    $provided = $vite['input'];
+    sort($provided);
+
+    // The checks above iterate the provider's own list, so they cannot see an entry removed from it.
+    $config = (string) file_get_contents(viteBuildRoot().'/vite.config.js');
+    if (preg_match('/input:\s*\[([^\]]*)\]/', $config, $match) !== 1) {
+        throw new RuntimeException('vite.config.js has no input list.');
+    }
+
+    preg_match_all("/'([^']+)'/", $match[1], $quoted);
+    $configured = $quoted[1];
+    sort($configured);
+
+    /** @var array<string, array{isEntry?: bool}> $manifest */
+    $manifest = json_decode((string) file_get_contents(viteBuildRoot().'/'.$vite['publicDirectory'].'/build/manifest.json'), true, flags: JSON_THROW_ON_ERROR);
+    $entries = array_keys(array_filter($manifest, fn (array $chunk): bool => $chunk['isEntry'] ?? false));
+    sort($entries);
+
+    expect($configured)->toBe(['resources/css/cp.css', 'resources/js/cp.js'])
+        ->and($provided)->toBe($configured)
+        ->and($entries)->toBe($configured);
+});
+
 it('commits a manifest that lists every entry with a built file on disk', function (): void {
     $vite = viteBuildProperty();
     $manifestPath = viteBuildRoot().'/'.$vite['publicDirectory'].'/build/manifest.json';
