@@ -60,7 +60,10 @@ final class BlueprintBreadcrumbs
             return;
         }
 
-        $event->response->with(self::PROP, self::openable(Breadcrumbs::additional()));
+        /** @var array<array-key, mixed> $crumbs core's `additional()` returns a list, untyped */
+        $crumbs = Breadcrumbs::additional();
+
+        $event->response->with(self::PROP, self::openable($crumbs));
     }
 
     /**

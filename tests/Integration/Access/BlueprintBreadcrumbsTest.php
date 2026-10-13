@@ -15,6 +15,7 @@ use Statamic\Forms\Form;
 use Symfony\Component\HttpFoundation\Request as SymfonyRequest;
 use Symfony\Component\HttpFoundation\Response;
 use UAMSWeb\MultisiteForms\Http\BlueprintBreadcrumbs;
+use UAMSWeb\MultisiteForms\Tests\TestCase;
 
 /**
  * The form fields editor's breadcrumb links only the forms whose editor the user
@@ -61,14 +62,14 @@ afterEach(function (): void {
  *
  * @return TestResponse<Response>
  */
-function fieldsEditorPage(string $handle): TestResponse
+function fieldsEditorPage(TestCase $case, string $handle): TestResponse
 {
     $url = cp_route('blueprints.forms.edit', $handle);
     if (! is_string($url)) {
         throw new RuntimeException('The fields editor route did not resolve.');
     }
 
-    return test()->get($url)->assertOk();
+    return $case->get($url)->assertOk();
 }
 
 /**
@@ -81,7 +82,8 @@ function linkedTitles(TestResponse $response): array
 {
     $titles = [];
     $response->assertInertia(static function (AssertableInertia $page) use (&$titles): void {
-        $crumbs = $page->toArray()['props'][BlueprintBreadcrumbs::PROP] ?? null;
+        $props = $page->toArray()['props'];
+        $crumbs = is_array($props) ? ($props[BlueprintBreadcrumbs::PROP] ?? null) : null;
         if (! is_array($crumbs)) {
             throw new RuntimeException('The page has no pushed breadcrumbs.');
         }
@@ -98,21 +100,20 @@ function linkedTitles(TestResponse $response): array
     return $titles;
 }
 
-it('links only the forms whose editor the user may open', function (array $sites, string $handle, array $titles): void {
-    $this->actingAs(userWith('fields-'.implode('-', $sites), ['access cp', 'configure form fields', ...array_map(static fn (string $site): string => "access {$site} site", $sites)]));
+it('links only the forms whose editor the user may open', function (): void {
+    // An es-only user may open only the es-only form's editor, so no other form is linked
+    $this->actingAs(userWith('fields-es', ['access cp', 'configure form fields', 'access es site']));
 
-    $response = fieldsEditorPage($handle);
+    $response = fieldsEditorPage($this, 'spanish');
 
-    expect(linkedTitles($response))->toBe($titles)
+    expect(linkedTitles($response))->toBe([])
         ->and($response->getContent())->not->toContain('Title of english');
-})->with([
-    'an es-only user, es-only form' => [['es'], 'spanish', []],
-]);
+});
 
 it('links every other form for a user who may open every editor', function (string $kind): void {
     $this->actingAs($kind === 'super' ? superUser() : userWith('fields-both', ['access cp', 'configure form fields', 'access en site', 'access es site']));
 
-    $response = fieldsEditorPage('spanish');
+    $response = fieldsEditorPage($this, 'spanish');
 
     // The positive control for the HTML assertion above: the title is in the page when allowed
     expect(linkedTitles($response))->toBe(['Title of english', 'Title of everywhere', 'Title of shared'])
