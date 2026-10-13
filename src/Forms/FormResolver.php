@@ -12,9 +12,9 @@ use UAMSWeb\MultisiteForms\Sites\RequestSite;
  * Resolves a form for a site.
  *
  * Every surface that shows or accepts a form for a site (the tags, the submit
- * route, the APIs) asks this class, so assignment is decided in one place.
- * In the first phase the view carries the base form's values; per-site
- * overrides are applied here when they land.
+ * route, the APIs) asks this class, so assignment and the site's overrides are
+ * decided in one place. The view carries the base form's values, with the
+ * site's `site_overrides` row applied on top ({@see Overrides}).
  */
 final class FormResolver
 {
@@ -31,6 +31,9 @@ final class FormResolver
             return null;
         }
 
-        return SiteForm::of($base, $handle);
+        $view = SiteForm::of($base, $handle);
+        Overrides::apply($view);
+
+        return $view;
     }
 }
