@@ -18,6 +18,11 @@ use UAMSWeb\MultisiteForms\Exceptions\ReadOnlyFormException;
  * the site it was resolved for. Saving or deleting it throws: a resolved view
  * written back would put one site's values into the base file for every site.
  * Build one with {@see FormResolver}, not directly.
+ *
+ * The view is always a core Form, whatever class the form contract is bound to,
+ * so a driver's own methods (`statamic/eloquent-driver`'s `model()`, for one)
+ * are not on it. Reach them through {@see base()}, which returns the stored form
+ * in its own class (#107).
  */
 class SiteForm extends Form
 {
