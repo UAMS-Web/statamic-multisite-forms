@@ -265,3 +265,16 @@ Oldest first, one entry per closed decision, so **a new entry is appended to the
 **Residual.** Whether saving the screen drops an existing assignment to a site the editor cannot view is not yet measured. The server passes the stored handles through and sends that site to the browser marked invalid; what the Control Panel's select input posts back is measured in #101, and a drop would be a bug filed from there, since a form assigned only to that site would save as global.
 
 **Companion.** #85; measurement in #101. Earlier decision: #70.
+
+
+## 2026-10-13: An invalid `not_assigned` value is logged at boot, not thrown (#90)
+
+**Decision.** The add-on checks `not_assigned` each time it boots and logs an invalid value at `error` level, with the setting's key and the value. A page that meets an unassigned form still throws, as before.
+
+**Why.** Before this, an invalid value, most likely `null` from an unset `env()` variable, surfaced only as a 500 on a page that met an unassigned form, possibly long after deployment and on some sites only. Logging at boot reports it on the first request or `artisan` command after the change, and leaves every page that renders no unassigned form working.
+
+**Rejected.** Throwing at boot: it stops every `artisan` command, `package:discover` included, so a deploy fails at `composer install`, and it takes down every page for a value that affects only some. Throwing outside the console only: the same site-wide outage on the web. A doctor-style command: it reports only when someone runs it, which is the gap the ticket describes. Falling back to `empty` for an invalid value: it would hide a configuration error behind a guess at what was meant.
+
+**Residual.** The error is logged on every boot until the value is fixed, which is one line per request. A log nobody reads still reports nothing, so the page that meets an unassigned form keeps failing loudly.
+
+**Companion.** #90. Earlier decision: #73.

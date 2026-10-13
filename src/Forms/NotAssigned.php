@@ -41,4 +41,20 @@ enum NotAssigned: string
 
         return $setting;
     }
+
+    /**
+     * Log an invalid setting as an error, so it is reported when the add-on boots
+     * rather than only when a page first meets an unassigned form (#90). It does
+     * not throw: that would stop every `artisan` command, `package:discover`
+     * included, and every page rather than the few that render such a form,
+     * which still throw from `fromConfig()`.
+     */
+    public static function reportInvalidConfig(): void
+    {
+        try {
+            self::fromConfig();
+        } catch (InvalidArgumentException $invalidArgumentException) {
+            logger()->error($invalidArgumentException->getMessage());
+        }
+    }
 }
