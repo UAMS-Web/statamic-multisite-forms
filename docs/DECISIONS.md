@@ -402,17 +402,6 @@ Oldest first, one entry per closed decision, so **a new entry is appended to the
 
 **Companion.** #80.
 
-## 2026-10-13: The submission scope recognizes a Control Panel request by the trimmed route prefix (#122)
-
-**Decision.** `SubmissionScope::isControlPanelRequest()` replaces core's `Statamic::isCpRoute()` as the scope's test for a Control Panel request. It is false when the Control Panel is disabled or `statamic.cp.route` is not a string; otherwise it trims slashes from the configured route and from the request path, and is true when the path is the route or starts with the route and a slash. An empty route, which puts the Control Panel's routes at the root, makes every path one.
-
-**Why.** Measured in the host (Windows 11, `statamic/cms` v6.35.1, PHP 8.4.20) by handling requests in process under each `CP_ROUTE`, with `cp` as the control: with `/cp` and with `/cp/`, `/cp/auth/login` answered 200 and `/cp` and `/cp/forms` redirected to the login page, each on its `statamic.cp.*` route, while `isCpRoute()` was false on all three; with `cp/` it was false on `/cp` itself. Core registers the routes with the configured value as a prefix, which Laravel trims, while `isCpRoute()` compares the raw value, so under those values every Control Panel read went unscoped. Trimming both sides matches the prefix the routes are registered under.
-
-**Rejected.** Testing the matched route's name for the `statamic.cp.` prefix: a read made before routing, or outside a route, has no route to ask, and the scope's tests and callers decide by path today. Normalizing `statamic.cp.route` in config at boot: it would change the value core and other add-ons read.
-
-**Residual.** Core's own uses of `isCpRoute()` are unchanged, so other core behavior under a slashed route is as core has it. A request path is not URL-decoded beyond what Laravel's `path()` does, as in core.
-
-**Companion.** #122. Earlier decisions: #49, #78.
 ## 2026-10-13: The fields editor's breadcrumb is filtered on the prepared Inertia response (#124)
 
 **Decision.** `UAMSWeb\MultisiteForms\Http\BlueprintBreadcrumbs` listens for Laravel's `PreparingResponse` event. When the response is an Inertia response on the `statamic.cp.blueprints.forms.edit` route, it sets the `additionalBreadcrumbs` page prop to Statamic's pushed breadcrumbs with every link to a form's fields editor the user may not open removed: the forms for which the gate denies `configure form fields`. Every other response passes through.
@@ -424,3 +413,15 @@ Oldest first, one entry per closed decision, so **a new entry is appended to the
 **Residual.** The blueprints index and the command palette still list every form by title (#133). Another listener that sets `additionalBreadcrumbs` on the same response after this one would replace the filtered prop.
 
 **Companion.** #124. Earlier decisions: #77, #116.
+
+## 2026-10-13: The submission scope recognizes a Control Panel request by the trimmed route prefix (#122)
+
+**Decision.** `SubmissionScope::isControlPanelRequest()` replaces core's `Statamic::isCpRoute()` as the scope's test for a Control Panel request. It is false when the Control Panel is disabled or `statamic.cp.route` is not a string; otherwise it trims slashes from the configured route and from the request path, and is true when the path is the route or starts with the route and a slash. An empty route, which puts the Control Panel's routes at the root, makes every path one.
+
+**Why.** Measured in the host (Windows 11, `statamic/cms` v6.35.1, PHP 8.4.20) by handling requests in process under each `CP_ROUTE`, with `cp` as the control: with `/cp` and with `/cp/`, `/cp/auth/login` answered 200 and `/cp` and `/cp/forms` redirected to the login page, each on its `statamic.cp.*` route, while `isCpRoute()` was false on all three; with `cp/` it was false on `/cp` itself. Core registers the routes with the configured value as a prefix, which Laravel trims, while `isCpRoute()` compares the raw value, so under those values every Control Panel read went unscoped. Trimming both sides matches the prefix the routes are registered under.
+
+**Rejected.** Testing the matched route's name for the `statamic.cp.` prefix: a read made before routing, or outside a route, has no route to ask, and the scope's tests and callers decide by path today. Normalizing `statamic.cp.route` in config at boot: it would change the value core and other add-ons read.
+
+**Residual.** Core's own uses of `isCpRoute()` are unchanged, so other core behavior under a slashed route is as core has it. A request path is not URL-decoded beyond what Laravel's `path()` does, as in core.
+
+**Companion.** #122. Earlier decisions: #49, #78.
