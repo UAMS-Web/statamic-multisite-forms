@@ -6,7 +6,20 @@ Everything above the generated section below belongs to this repository and is e
 
 ## About this repository
 
-Replace this section with what an agent needs to know before working here: what the repository is, how to install and run it, how to run its tests and checks, the conventions it follows, and anything that is true of this repository alone. The shared skills and rules below cover the organization-wide conventions; do not repeat them here.
+A Statamic add-on (`uams-web/statamic-multisite-forms`, namespace `UAMSWeb\MultisiteForms`) that makes forms per-site in a multisite install: site assignment, per-site overrides, and site-separated submissions in flat files. It is a Composer library with no `artisan`, `.env`, database or front end; a host application boots it through `extra.laravel.providers`. The `statamic-package-conventions` skill covers what that changes.
+
+### Commands
+
+- `composer install`: installs dependencies and applies the `patches/` set to `pestphp/pest-plugin-mutate` (temporary, Windows-safe mutation testing; see `upstream-patch-lifecycle`).
+- `composer ci`: the gate, run in order and stopping at the first failure: `stan` (Larastan), `test:pint`, `test:refactor` (Rector dry run), `test` (Pest `Unit` and `Integration`). GitHub Actions runs the same command.
+- `composer pint` and `composer refactor` apply formatting and the gating Rector profile; `composer refactor:sweep` runs the deliberate sweep profile.
+- `composer mutate`: Pest mutation testing over `src/`. Read `pcov-setup` before trusting a score.
+
+### Layout and tests
+
+- `src/` holds the add-on (PHP floor `^8.4`, `statamic/cms` `^6.35`); `tests/Unit` boots nothing, `tests/Integration` boots a minimal Statamic through Testbench (`tests/TestCase.php`).
+- Host-bound tests belong in `tests/Feature/` and are not part of `composer ci`; the `host-only-behavior-needs-a-host-run` rule says when a host run is required.
+- The static-analysis cache lives in `storage/phpstan` (git-ignored).
 
 <!-- uams-claude-skills:begin -->
 ## Shared skills and rules
