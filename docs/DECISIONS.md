@@ -304,3 +304,15 @@ Oldest first, one entry per closed decision, so **a new entry is appended to the
 **Residual.** Any app that binds its own form class has the same gap and the same answer. Control Panel form screens and the Eloquent submissions driver were not measured with the forms driver on (spike 7).
 
 **Companion.** #107; measurement in #83; documentation in #109.
+
+## 2026-10-13: Deleting a form and editing its fields need every site, as editing does (#77)
+
+**Decision.** The site rules on form access are one global `Gate::before()` callback (`UAMSWeb\MultisiteForms\Access\FormGate`). For a form, or a submission through its form, it denies a non-super user who can access none of the form's sites. For the abilities that change a form (`edit`, and also `delete` and `configure form fields`) it requires every site the form is assigned to, or every configured site for a global form. Site access is asked of core's site policy (`can('view', $site)`), and a handle naming no configured site is never accessible, so a form still listing a removed site is open to super users only. The callback never grants: everything it does not deny is left to core's policies.
+
+**Why.** #42 decided that editing needs every site because a change to the base values reaches each one. Deleting a form removes it from every site at once, and its fields are its blueprint, shared by every site, so both reach further than editing and earn the same rule. Asking core's site policy keeps one source of truth for site access, including core's answer on a single-site install, where every user can access the one site and the rules change nothing. Failing closed on an unknown handle keeps a stale assignment from opening a form to everyone.
+
+**Rejected.** Applying the every-site rule to `edit` only, as #77's summary words it: a user who may not edit a shared form could still delete it for every site. Treating a removed site's handle as absent from the list: the form would turn global for every user, the opposite of what its assignment says.
+
+**Residual.** Core's form blueprint editor authorizes `configure form fields` without naming the form, so the callback cannot reach it; the route stays open to such a user and is tracked in #116.
+
+**Companion.** #77. Earlier decisions: #42, #54, #57.

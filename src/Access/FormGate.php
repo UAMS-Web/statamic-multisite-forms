@@ -1,0 +1,90 @@
+<?php
+
+declare(strict_types=1);
+
+namespace UAMSWeb\MultisiteForms\Access;
+
+use Illuminate\Support\Facades\Gate;
+use Statamic\Contracts\Forms\Submission;
+use Statamic\Facades\User;
+use Statamic\Forms\Form;
+use UAMSWeb\MultisiteForms\Forms\Assignment;
+
+/**
+ * Denies Control Panel users the forms of sites they cannot access (#77).
+ *
+ * Registered as a global `Gate::before()` callback, because core's form and
+ * submission policies return true from their own `before()` for any user with
+ * `configure forms`, and a policy method would never be reached for them. Only a
+ * super user passes untouched; `configure forms` does not bypass the site rules.
+ *
+ * Two rules apply to an ability asked about a form, or about a submission of one:
+ *
+ * - A form listing sites is denied to a user who can access none of them.
+ * - Changing a form (`edit`, `delete`, `configure form fields`) needs access to
+ *   every site it is assigned to, or to every configured site for a global form,
+ *   because the change reaches each of those sites.
+ *
+ * Otherwise the callback returns null, so core's policies decide as before. It
+ * never grants anything.
+ */
+final class FormGate
+{
+    // tests/Integration/Access/FormGateTest.php fails when any item is removed, shown by
+    // hand for each one (#77), but a constant is not an executable line, so the coverage
+    // driver links no test to these mutants and they are never run.
+    // @pest-mutate-ignore: RemoveArrayItem
+    /** The abilities that change a form, and so need every one of its sites. */
+    public const array CHANGING = ['edit', 'delete', 'configure form fields'];
+
+    /**
+     * Register the callback with the gate.
+     */
+    public static function register(): void
+    {
+        Gate::before(static fn (mixed $user, string $ability, array $arguments): ?bool => self::decide($user, $ability, $arguments));
+    }
+
+    /**
+     * False to deny the ability, or null to leave it to core's policies.
+     *
+     * @param  array<array-key, mixed>  $arguments
+     */
+    public static function decide(mixed $user, string $ability, array $arguments): ?bool
+    {
+        $form = self::formOf($arguments[0] ?? null);
+        if (! $form instanceof Form) {
+            return null;
+        }
+
+        $user = User::fromUser($user);
+        if ($user === null || $user->isSuper()) {
+            return null;
+        }
+
+        $sites = Assignment::sites($form);
+
+        if ($sites !== [] && ! SiteAccess::canAccessAny($user, $sites)) {
+            return false;
+        }
+
+        $changing = $form === $arguments[0] && in_array($ability, self::CHANGING, true);
+        if ($changing && ! SiteAccess::canAccessAll($user, $sites === [] ? SiteAccess::allHandles() : $sites)) {
+            return false;
+        }
+
+        return null;
+    }
+
+    /**
+     * The form an ability is asked about: the subject itself, or a submission's form.
+     */
+    private static function formOf(mixed $subject): ?Form
+    {
+        if ($subject instanceof Submission) {
+            $subject = $subject->form();
+        }
+
+        return $subject instanceof Form ? $subject : null;
+    }
+}

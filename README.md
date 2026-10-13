@@ -4,7 +4,7 @@ A Statamic add-on that makes forms per-site in a multisite install: site assignm
 
 ## Status
 
-Early development. Site assignment is in progress: a form's settings screen has a Sites field, a submit from a site the form is not assigned to answers 404, the form tags follow the `not_assigned` setting below, and a new submission records the site it was made from under `_site`. Per-site overrides of a form's title, email and store apply from the form file and are edited in the form's settings screen. The rest of "What it will do" is the plan, not what ships today. It is free, has no editions, and is licensed under MIT.
+Early development. Site assignment is in progress: a form's settings screen has a Sites field, a submit from a site the form is not assigned to answers 404, the form tags follow the `not_assigned` setting below, and a new submission records the site it was made from under `_site`. Per-site overrides of a form's title, email and store apply from the form file and are edited in the form's settings screen. In the Control Panel, a user sees only the forms of sites they can access. The rest of "What it will do" is the plan, not what ships today. It is free, has no editions, and is licensed under MIT.
 
 ## What it will do
 
@@ -89,6 +89,16 @@ site_overrides:
 Here a submission from the English site is stored and emailed to `info@example.com`; one from the Spanish site is emailed to `info-es@example.com` only and is not stored. A row's `email` replaces the form's list rather than adding to it. An empty `title` or `email` in a row uses the form's own value, so leaving one blank never clears it for that site. `store` is read as `true` or `false`, or as the strings `'true'` and `'false'` the Control Panel saves; anything else uses the form's setting. Other keys in a row are ignored.
 
 In the Control Panel, the rows are edited under **Site overrides** in the Sites section of a form's settings. Each row picks one site and sets any of the three values; its email list has the same columns as the form's own. A row for a site the form is not assigned to, or a second row for the same site, is refused when saving.
+
+## Control Panel access
+
+Access to forms in the Control Panel follows the site access a user already has, through core's `access {site} site` permissions; there are no new permission keys.
+
+- A form assigned to sites is hidden from, and refused to, a user who can access none of them. Its submissions are refused the same way.
+- Editing a form's settings, deleting it, or editing its fields needs access to every site it is assigned to, or to every site for a form with no sites, because each change reaches all of them.
+- `configure forms` does not bypass either rule. Only super users do, which narrows what core allows that permission.
+
+A form whose `sites` names a site no longer configured is open to super users only. Core's blueprint editor is not yet covered by these rules ([#116](https://github.com/UAMS-Web/statamic-multisite-forms/issues/116)).
 
 ## Checking a form's site in a template
 
