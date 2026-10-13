@@ -4,7 +4,7 @@ A Statamic add-on that makes forms per-site in a multisite install: site assignm
 
 ## Status
 
-Early development. Site assignment is in progress: a form's settings screen has a Sites field, a submit from a site the form is not assigned to answers 404, and the form tags follow the `not_assigned` setting below. The rest of "What it will do" is the plan, not what ships today. It is free, has no editions, and is licensed under MIT.
+Early development. Site assignment is in progress: a form's settings screen has a Sites field, a submit from a site the form is not assigned to answers 404, the form tags follow the `not_assigned` setting below, and a new submission records the site it was made from under `_site`. The rest of "What it will do" is the plan, not what ships today. It is free, has no editions, and is licensed under MIT.
 
 ## What it will do
 
