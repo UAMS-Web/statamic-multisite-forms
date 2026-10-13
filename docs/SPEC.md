@@ -101,7 +101,7 @@ The add-on uses core's own rule for the submit request, `Site::findByUrl(URL::pr
 
 New submissions store the site in the data under `_site`. Core's store, indexes and file layout are untouched.
 
-- **Existing submissions have no `_site`.** They are unattributed. They remain visible to anyone who could see them before. A `multisite-forms:attribute` command assigns a site to unattributed submissions of a form (with `--dry-run` and a log of each change), for installs that want to backfill.
+- **Submissions with no `_site` are unattributed.** That covers submissions saved before the add-on and any saved without the submit route (code calling `$form->makeSubmission()->save()`, an import, another add-on), so it is an ongoing category, not only history. A non-super user sees them only when they can access every site the form is assigned to, which for a global form means every site (#40). Single-site editors therefore lose sight of pre-install submissions until they are attributed, and the release notes say so. A `multisite-forms:attribute` command assigns a site to unattributed submissions of a form (with `--dry-run` and a log of each change), for installs that want to backfill.
 - **Per-site listing and export** filter on `_site` through the query builder. The Stache filters on the key correctly and indexes it on first use (spike 2, below), so no post-filter is needed.
 - **Why not a folder per site, now.** The store's filter only accepts files directly in the form folder, so `contact/clinic/*.yaml` would be invisible to core. A folder layout would mean replacing the store, its key and path rules and its indexes from the first release, and tying the add-on to Stache internals that move between versions. A folder layout can be reached later by a deterministic per-file move, so this choice is reversible and the other is not cheap. Decided in `docs/DECISIONS.md` (#43).
 
@@ -110,7 +110,7 @@ New submissions store the site in the data under `_site`. Core's store, indexes 
 No Control Panel view is replaced.
 
 - **Form visibility.** Core's index keeps only forms the user `can('view')`. The add-on adds a gate callback on the form and submission abilities: a form with a non-empty `sites` list is denied to a user who has no `access {site} site` for any assigned site. Super users are untouched. The index therefore scopes itself.
-- **Submission visibility.** A user sees submissions whose `_site` is a site they can access, and unattributed submissions only when they can access every site the form is assigned to. Every Control Panel read goes through `Form::querySubmissions()` or `FormSubmission::find()`, which resolve to the container-bound `SubmissionQueryBuilder` contract. The add-on decorates that contract with `app()->extend()`, adding the site scope through the public query API, so the listing, detail view, delete, export and the forms index count are scoped without replacing a controller or core's builder class (spike 4, decided in #49). The scope applies only to Control Panel requests by non-super users, because the same builder serves the API and the `{{ form:submissions }}` tag.
+- **Submission visibility.** A user sees submissions whose `_site` is a site they can access, and unattributed submissions only when they can access every site the form is assigned to (all sites for a global form; #40). Every Control Panel read goes through `Form::querySubmissions()` or `FormSubmission::find()`, which resolve to the container-bound `SubmissionQueryBuilder` contract. The add-on decorates that contract with `app()->extend()`, adding the site scope through the public query API, so the listing, detail view, delete, export and the forms index count are scoped without replacing a controller or core's builder class (spike 4, decided in #49). The scope applies only to Control Panel requests by non-super users, because the same builder serves the API and the `{{ form:submissions }}` tag.
 - **Permissions.** No new keys. Per-site access is the intersection of a core form permission and a core site permission, so an administrator already has the controls. This differs from per-form-per-site keys on purpose: it is less expressive and far less to keep correct. If per-form-per-site grants are demanded, they are an addition.
 - **Site selector.** Core's Control Panel already tracks a selected site. Making the forms index filter by the *selected* site, instead of by access, needs UI and is deferred.
 
@@ -152,7 +152,7 @@ Each phase ends with a host-bound test run in `statamic-multisite-forms-host` (`
 ## Open questions
 
 - [ ] Default for `not_assigned`: `empty` with a warning (proposed) or `404`.
-- [ ] Unattributed legacy submissions: visible to everyone who could see them before (proposed), or only to users with access to all sites.
+- [x] Who sees unattributed submissions. Decided: only users who can access every site the form is assigned to (#40, `docs/DECISIONS.md`).
 - [ ] Is access-based scoping (proposed) enough for the first release, or is a selected-site filter on the forms index required?
 - [ ] Who may assign a form to a site: anyone who can edit the form (proposed), or only users with access to every site being added.
 - [x] Submissions as a flat store with `_site` or a folder per site. Decided: flat store with `_site` (#43, `docs/DECISIONS.md`).
