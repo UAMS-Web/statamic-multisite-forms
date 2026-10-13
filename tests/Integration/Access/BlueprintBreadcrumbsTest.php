@@ -191,6 +191,7 @@ it('listens for responses being prepared', function (): void {
     $request = Request::create('/cp/fields/blueprints/forms/spanish/edit');
     $route = new Route('GET', 'cp/fields/blueprints/forms/{form}/edit', [])->name(BlueprintBreadcrumbs::ROUTE);
     $route->bind($request);
+
     $request->setRouteResolver(static fn (): Route => $route);
     $this->actingAs(superUser());
 
