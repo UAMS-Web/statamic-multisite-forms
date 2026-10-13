@@ -235,7 +235,7 @@ test('the action is refused for a selection that names no form', function (): vo
     // Make a configurer who can access only es
     $user = formsConfigurer('es-configurer', ['es']);
 
-    // Expect no form refused and an es form allowed
+    // Expect a missing form refused and an es form allowed
     expect(app(DuplicateForm::class)->authorize($user, null))->toBeFalse()
         ->and(app(DuplicateForm::class)->authorize($user, FormFacade::find('spanish')))->toBeTrue();
 });
