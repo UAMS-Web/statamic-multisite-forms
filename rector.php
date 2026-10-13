@@ -11,7 +11,6 @@ use Rector\Php82\Rector\Class_\ReadOnlyClassRector;
 use Rector\TypeDeclaration\Rector\ClassMethod\AddParamFromDimFetchKeyUseRector;
 use Rector\TypeDeclaration\Rector\ClassMethod\StrictArrayParamDimFetchRector;
 use Rector\ValueObject\PhpVersion;
-use RectorLaravel\Set\LaravelSetProvider;
 
 // WordPress repositories: uncomment the import below together with the matching
 // `ArrayToFirstClassCallableRector::class` entry in `$sweepOnlyRules`. A `use`
@@ -156,16 +155,10 @@ return RectorConfig::configure()
     // RectorConfigBuilder::withPhpSets()). So composer.json carries
     // `"require": {"php": ">=<floor>"}`, the same floor as the line above.
     ->withPhpSets()
-    // Laravel and Statamic repositories: uncomment the two calls below and the
-    // `use RectorLaravel\Set\LaravelSetProvider;` import, after
-    // `composer require --dev driftingly/rector-laravel`.
-    //
-    // `withSetProviders()` registers the package's version-aware set group;
-    // `withComposerBased(laravel:, phpunit:)` then activates the sets whose
-    // composer constraints the installed packages satisfy. In uams-statamic,
-    // `laravel: true` without the provider line was a silent no-op.
-    //
-    ->withSetProviders(LaravelSetProvider::class)
+    // Laravel and Statamic: `withComposerBased()` activates the sets whose composer
+    // constraints the installed packages satisfy (`driftingly/rector-laravel`
+    // loads its set providers internally since Rector 2.7; the older
+    // `withSetProviders()` call is deprecated and no longer applied).
     ->withComposerBased(
         laravel: true,
         phpunit: true,
