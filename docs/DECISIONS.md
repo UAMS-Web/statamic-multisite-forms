@@ -192,3 +192,15 @@ Oldest first, one entry per closed decision, so **a new entry is appended to the
 
 **Companion.** #41. Follow-up: #58. Spec: `docs/SPEC.md`.
 
+## 2026-10-13: A form tag renders nothing on a site the form is not assigned to (#39)
+
+**Decision.** When a form is not assigned to the current site, the `{{ form:create }}` family renders nothing and logs a warning naming the form and the site. The `not_assigned` config value can be set to `404` to abort the request instead; `empty` is the default. A submit to an unassigned site is always a 404.
+
+**Why.** In a multisite install the common way to reach this case is a shared template, such as a footer or layout partial, rendered on every site with a form meant for some of them. On the other sites that is intended, so a 404 or an error would break working pages. The warning leaves a trace for a genuine authoring slip.
+
+**Rejected.** A 404 as the default: the whole page fails on every non-assigned site that shares the template. Throwing, as core does for a missing form (`Tags::getForm()`): a 500 is never what an editor wants.
+
+**Residual.** The warning's level and frequency are settled at build time. A template check of assignment, to hide surrounding content, is #60.
+
+**Companion.** #39. Follow-up: #60. Spec: `docs/SPEC.md`.
+

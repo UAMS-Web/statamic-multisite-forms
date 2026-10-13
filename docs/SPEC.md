@@ -95,7 +95,7 @@ The add-on uses core's own rule for the submit request, `Site::findByUrl(URL::pr
 | REST and GraphQL | An optional `site` filter limits form listings to forms assigned to it. Without it, behavior is core's. Phase 3. |
 | Static caching | Not changed. Whether static cache keys already separate sites (they are URL-based, and sites have distinct URLs) is **unverified**; confirm with the same URI on two domains before claiming it. |
 
-`not_assigned` is a config value with two settings. `empty` renders nothing from the tag and logs a warning naming the form and site; `404` aborts the request. **The default is `empty`**: a page that embeds a form not offered on this site is an authoring slip and should degrade, while the warning keeps it from hiding. Submit is always a 404.
+`not_assigned` is a config value with two settings. `empty` renders nothing from the tag and logs a warning naming the form and site; `404` aborts the request. **The default is `empty`** (#39): a shared template (a footer or layout partial) rendered on every site with a form meant for some of them is the pattern multisite invites, and failing loudly would break pages that are working as intended. Core's own behavior for a missing form is to throw (`Tags::getForm()`); an unassigned form deliberately does not. Whether the warning is logged once per request or at debug level is settled at build time. A template check of assignment, to hide content around an empty form, is #60. Submit is always a 404.
 
 ## Submissions
 
@@ -153,7 +153,7 @@ Each phase ends with a host-bound test run in `statamic-multisite-forms-host` (`
 
 ## Open questions
 
-- [ ] Default for `not_assigned`: `empty` with a warning (proposed) or `404`.
+- [x] Default for `not_assigned`. Decided: `empty` with a warning, `404` available (#39, `docs/DECISIONS.md`).
 - [x] Who sees unattributed submissions. Decided: only users who can access every site the form is assigned to (#40, `docs/DECISIONS.md`).
 - [x] Whether the first release needs more than access-based scoping. Decided: access only; a Site filter on the submissions listing follows as #58 (#41, `docs/DECISIONS.md`).
 - [x] Whether `configure forms` bypasses the site scope. Decided: it does not; only super users do (#54, `docs/DECISIONS.md`).
