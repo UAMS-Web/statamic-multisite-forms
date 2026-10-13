@@ -132,7 +132,7 @@ None added in the first release. Core's `FormSubmitted`, `SubmissionSaved`, `For
 | The submit middleware runs before or after route binding differently across versions. | Test in the host on the lowest and latest supported version. |
 | A site-denying gate callback is overridden by core's policy `before`, which returns true for `configure forms`. | The callback is a global `Gate::before()`, which Laravel runs before any policy (`Gate::raw()`); it returns nothing for super users and for allowed sites. Tests cover a super user, a `configure forms` user and a plain viewer. |
 | `_site` collides with a user field. | Underscore-prefixed keys are core's parameter namespace and cannot be blueprint handles. |
-| Submissions are stored in the database through `statamic/eloquent-driver`, where `_site` is a JSON path rather than a Stache index. | Measured on SQLite (spike 6). MySQL and PostgreSQL compile the same query to their own JSON functions and are not measured; the README states the verified scope. |
+| Submissions are stored in the database through `statamic/eloquent-driver`, where `_site` is a JSON path rather than a Stache index. | Measured on SQLite, from a console (spike 6) and through Control Panel listing, detail and export requests (spike 8). MySQL and PostgreSQL compile the same query to their own JSON functions and are not measured; the README states the verified scope. |
 | Forms are stored in the database through `statamic/eloquent-driver`, whose form class adds a model the resolved view does not copy. | Measured (spike 7): the view carries the same values as its base form. It is not an instance of the driver's class and has no `model()`; whether to close that is #107. |
 
 ## Phasing
@@ -154,7 +154,7 @@ Each phase ends with a host-bound test run in `statamic-multisite-forms-host` (`
 3. **Tag resolution.** Resolved (#36); see the results below.
 4. **Submission listing scope.** Resolved (#37); see the results below.
 5. **Resolved view through the controller.** Resolved (#38); see the results below.
-6. **The Eloquent submissions driver.** Resolved on SQLite (#53); see the results below.
+6. **The Eloquent submissions driver.** Resolved on SQLite (#53), and through Control Panel requests (#65); see the results below.
 7. **The resolved view under the Eloquent forms driver.** Resolved (#83); see the results below. Its one gap is a decision in #107.
 
 ## Open questions
@@ -310,3 +310,21 @@ Within the driver's forms code, `model()` is called on a form only in its own `s
 The host's Feature tests for the tags, the submit gate, `_site` recording, `form:assigned` and the Phase 1 exit criterion (`FormTagsTest`, `SubmitGateTest`, `RecordSubmitSiteTest`, `FormAssignedTest`, `PhaseOneExitTest`) were also run against the migrated database with the Eloquent forms driver on: 14 passed, and the forms they create were rows in the `forms` table.
 
 Not covered: Control Panel requests on the form screens, the Eloquent submissions driver at the same time, MySQL and PostgreSQL. Measured on Windows 11 with `statamic/cms` v6.35.1 and PHP 8.4.20; macOS is not yet measured.
+
+### Spike 8: the submission scope through Control Panel requests on the Eloquent driver (#65)
+
+Spike 6 read the scope from a console. Here the host was switched temporarily to `statamic/eloquent-driver` v5.12.3 (commit `50c19165`) with `form_submissions.driver` set to `eloquent` and the driver's two submission migrations run on SQLite 3.51.3, and then restored. A probe test in the host sent real Control Panel requests through the host's middleware, as a user with `access cp`, `access en site` and `view {form} form submissions`, but not `access es site`. The form was assigned to `en` and `es`. Four submissions were saved through `$submission->save()`: `en` and `es` with that `_site`, `none` with no `_site`, and `blank`, whose row was then edited so that `data` held `"_site":""`, as a write around core would leave it (#130). The table held four rows and the form's submissions folder held no files, so the requests read the database. The bound builder was `Statamic\Eloquent\Forms\SubmissionQueryBuilder` in both columns.
+
+The control removed the add-on's extender with `app()->forgetExtenders()` on the `SubmissionQueryBuilder` contract, in the same test, after the scoped requests.
+
+| Request | Scope off (control) | Scope on |
+| --- | --- | --- |
+| `GET /cp/forms/{form}/submissions` | `en`, `es`, `none`, `blank` | `en` |
+| Detail view of the `es` submission | 200 | 404 |
+| Detail view of the `en` submission | 200 | 200 |
+| Detail view of the unattributed submission | 200 | 404 |
+| `GET /cp/forms/{form}/export/json` | `en`, `es`, `none`, `blank` | `en` |
+
+The unattributed and empty-site submissions are hidden because the user does not cover every site the form is assigned to (#40, #130); spike 4 left the export unrequested, and on this driver it is scoped too. `multisite-forms:attribute {form} en` was then run on the same rows: the dry run listed `none` and `blank` and changed nothing, the real run wrote `"_site":"en"` into both rows' `data` and left `en` and `es` as they were, and a second run attributed 0 (#140).
+
+Not covered: MySQL and PostgreSQL (#66), and volume. Measured on Windows 11 with `statamic/cms` v6.35.1, Laravel 13.35.0 and PHP 8.4.20; macOS is not yet measured.
