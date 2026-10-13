@@ -13,11 +13,7 @@ use UAMSWeb\MultisiteForms\Sites\RequestSite;
  * @command  vendor/bin/pest tests/Integration/Sites/RequestSiteTest.php
  */
 beforeEach(function (): void {
-    config(['statamic.system.multisite' => true]);
-    Site::setSites([
-        'en' => ['name' => 'English', 'url' => 'http://localhost/', 'locale' => 'en_US'],
-        'es' => ['name' => 'Spanish', 'url' => 'http://localhost/es/', 'locale' => 'es_ES'],
-    ]);
+    useTwoSites();
 });
 
 it('names the site the referrer falls under', function (string $referrer, string $site): void {

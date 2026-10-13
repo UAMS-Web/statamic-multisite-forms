@@ -5,14 +5,15 @@ declare(strict_types=1);
 namespace UAMSWeb\MultisiteForms;
 
 use Statamic\Providers\AddonServiceProvider;
+use UAMSWeb\MultisiteForms\Forms\ConfigFields;
 
 /**
  * Service provider for the Multisite Forms add-on.
  *
  * The host application discovers it through `extra.laravel.providers` in
- * `composer.json`. It registers the Control Panel build and nothing else yet;
- * bindings and commands are added as the phases in the add-on's specification
- * land.
+ * `composer.json`. It registers the Control Panel build and the Sites section of
+ * the form settings screen; the rest is added as the phases in the add-on's
+ * specification land.
  */
 class ServiceProvider extends AddonServiceProvider
 {
@@ -30,4 +31,12 @@ class ServiceProvider extends AddonServiceProvider
         ],
         'publicDirectory' => 'resources/dist',
     ];
+
+    /**
+     * Boot the add-on once Statamic has booted.
+     */
+    public function bootAddon(): void
+    {
+        ConfigFields::register();
+    }
 }

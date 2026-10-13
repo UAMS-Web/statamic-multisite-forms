@@ -2,7 +2,6 @@
 
 declare(strict_types=1);
 
-use Statamic\Facades\Site;
 use Statamic\Forms\Form;
 use UAMSWeb\MultisiteForms\Forms\FormResolver;
 use UAMSWeb\MultisiteForms\Forms\SiteForm;
@@ -14,11 +13,7 @@ use UAMSWeb\MultisiteForms\Forms\SiteForm;
  * @command  vendor/bin/pest tests/Integration/Forms/FormResolverTest.php
  */
 beforeEach(function (): void {
-    config(['statamic.system.multisite' => true]);
-    Site::setSites([
-        'en' => ['name' => 'English', 'url' => 'http://localhost/', 'locale' => 'en_US'],
-        'es' => ['name' => 'Spanish', 'url' => 'http://localhost/es/', 'locale' => 'es_ES'],
-    ]);
+    useTwoSites();
 });
 
 /**

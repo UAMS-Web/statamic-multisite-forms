@@ -37,6 +37,16 @@ composer require uams-web/statamic-multisite-forms:@dev
 
 A path repository installs by symlink where the filesystem allows it, so an edit in the checkout is live in the host with no further step. Measured on Windows 11, Composer 2.10.2: `vendor/uams-web/statamic-multisite-forms` is a symlink to the checkout. Where a symlink cannot be created Composer copies instead, and a change then needs `composer reinstall uams-web/statamic-multisite-forms`.
 
+To run the host against a worktree slot rather than the primary checkout, repoint that symlink and set it back afterwards. In PowerShell, from the host root, with the slot's absolute path in place of `<slot-path>`:
+
+```powershell
+$link = 'vendor\uams-web\statamic-multisite-forms'
+[System.IO.Directory]::Delete($link, $false)                  # removes the link, not its target
+New-Item -ItemType SymbolicLink -Path $link -Target '<slot-path>'
+```
+
+The autoloader maps the add-on's namespace to that path, so a class added on the slot's branch loads with no `composer dump-autoload`. Measured on Windows 11 for #70. A change to `composer.json` still needs the `composer update` below.
+
 A change to `composer.json` (a new provider, a new `extra.statamic` key) needs `composer update uams-web/statamic-multisite-forms` from the host root, and the `Discovered Addon:` line at the end of the output confirms discovery.
 
 ## Confirming the add-on loaded
@@ -75,7 +85,7 @@ So declaring editions later, with `free` first, leaves an install that never cho
 php artisan test vendor/uams-web/statamic-multisite-forms/tests/Feature/HostRegistersAddonTest.php
 ```
 
-The skeleton asserts that the host lists the add-on, registers its service provider and is multisite. Real feature tests arrive with the features. The `host-only-behavior-needs-a-host-run` rule says when a run is required, and the `host-app-tests` skill covers claiming a slot and reading results.
+`HostRegistersAddonTest` asserts that the host lists the add-on, registers its service provider and is multisite. `SitesConfigSectionTest` requests the form settings screen and its save endpoint as a super user, with form files in a temporary directory, so the host's own forms are never written. Run the whole directory with `php artisan test vendor/uams-web/statamic-multisite-forms/tests/Feature/`. The `host-only-behavior-needs-a-host-run` rule says when a run is required, and the `host-app-tests` skill covers claiming a slot and reading results.
 
 ## Patch leakage
 
