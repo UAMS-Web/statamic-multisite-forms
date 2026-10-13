@@ -1,5 +1,8 @@
 /vendor
 /storage/phpstan
+# Statamic's AddonTestCase points its Stache stores here; a test that writes
+# content must use a temporary directory instead, so nothing here is kept.
+/tests/__fixtures__/
 .DS_Store
 .phpunit.result.cache
 .claude/worktrees/
