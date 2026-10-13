@@ -17,6 +17,7 @@ use UAMSWeb\MultisiteForms\Access\SubmissionScope;
 use UAMSWeb\MultisiteForms\Forms\ConfigFields;
 use UAMSWeb\MultisiteForms\Forms\NotAssigned;
 use UAMSWeb\MultisiteForms\Forms\RecordSubmitSite;
+use UAMSWeb\MultisiteForms\Http\Middleware\AuthorizeFormBlueprint;
 use UAMSWeb\MultisiteForms\Http\SubmitGate;
 
 /**
@@ -25,8 +26,9 @@ use UAMSWeb\MultisiteForms\Http\SubmitGate;
  * The host application discovers it through `extra.laravel.providers` in
  * `composer.json`. It registers the Control Panel build, the Sites section of
  * the form settings screen, the site rules on form and submission access in
- * the Control Panel, the gate on core's form submit route, the listener that records a
- * submission's site, and the one that assigns a new form to its creator's sites;
+ * the Control Panel and on its form fields editor, the gate on core's form
+ * submit route, the listener that records a submission's site, and the one that
+ * assigns a new form to its creator's sites;
  * the rest is added as the phases in the add-on's specification land.
  */
 class ServiceProvider extends AddonServiceProvider
@@ -59,6 +61,7 @@ class ServiceProvider extends AddonServiceProvider
         ConfigFields::register();
         FormGate::register();
         SubmissionScope::register($this->app);
+        AuthorizeFormBlueprint::register($this->app->make(Router::class));
         SubmitGate::register($this->app->make(Router::class), $this->app->make(Kernel::class));
         Event::listen(FormSubmitted::class, [RecordSubmitSite::class, 'submitted']);
         Event::listen(SubmissionCreating::class, [RecordSubmitSite::class, 'creating']);
