@@ -54,7 +54,7 @@ parameters:
     # this block is still worth keeping so the floor is stated. Integers:
     # 8.2 = 80200, 8.3 = 80300, 8.4 = 80400, 8.5 = 80500.
     phpVersion:
-        min: 80300
+        min: 80400
         max: 80400
 
     # The highest level the code passes today. Find it by running
