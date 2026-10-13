@@ -47,9 +47,17 @@ final class RecordSubmitSite
      */
     public function creating(SubmissionCreating $event): void
     {
-        $route = $this->request->route();
         $submission = $event->submission;
-        if (! $route instanceof Route || $route->getName() !== ResolveSubmittedForm::ROUTE || ! $submission instanceof Submission || $submission->get(self::KEY) !== null) {
+        // The event's property is untyped, so Larastan needs this guard; core always
+        // passes a submission, so InstanceOfToTrue and the unreachable return
+        // cannot be killed.
+        // @pest-mutate-ignore: InstanceOfToTrue, RemoveEarlyReturn
+        if (! $submission instanceof Submission) {
+            return;
+        }
+
+        $route = $this->request->route();
+        if (! $route instanceof Route || $route->getName() !== ResolveSubmittedForm::ROUTE || $submission->get(self::KEY) !== null) {
             return;
         }
 
