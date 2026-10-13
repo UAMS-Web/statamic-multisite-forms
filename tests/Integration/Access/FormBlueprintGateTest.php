@@ -34,7 +34,7 @@ beforeEach(function (): void {
     useTemporaryFormsDirectory();
     $this->rolesFile = useTemporaryRoles();
 
-    // The editor's save writes blueprint files, so they go to a directory of this test's own
+    // The editor's save writes blueprints, so give them this test's own directory
     $this->blueprintsDirectory = sys_get_temp_dir().'/msf-blueprints-'.uniqid('', true);
     app(BlueprintRepository::class)->setDirectories($this->blueprintsDirectory);
 

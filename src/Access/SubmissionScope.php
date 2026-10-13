@@ -33,7 +33,7 @@ use Statamic\Query\EloquentQueryBuilder;
 use UAMSWeb\MultisiteForms\Forms\Assignment;
 
 /**
- * Scopes the submissions a Control Panel user reads to the sites they can access (#78).
+ * Scopes Control Panel submission reads to the sites the user can access (#78).
  *
  * The scope decorates whichever builder is bound to core's submission query
  * contract, core's Stache builder or a driver's, through `app()->extend()`, so
@@ -70,7 +70,7 @@ final class SubmissionScope
     // shown by hand (#123), but a constant is not an executable line, so the coverage
     // driver links no test to these mutants and they are never run.
     // @pest-mutate-ignore: RemoveArrayItem
-    /** The events of the writes that can change a plan: submissions, forms, sites and site access. */
+    /** Events of the writes that can change a plan: submissions, forms, sites, access. */
     public const array CHANGES = [
         SubmissionSaved::class,
         SubmissionDeleted::class,
@@ -376,7 +376,7 @@ final class SubmissionScope
     }
 
     /**
-     * The ids of the submissions of the given forms that a condition keeps, read unscoped.
+     * The ids of the given forms' submissions that a condition keeps, read unscoped.
      *
      * @param  list<mixed>  $forms  The handles of the forms to read.
      * @param  callable(Builder|EloquentQueryBuilder): void  $condition  Adds the condition to the query.
@@ -384,7 +384,7 @@ final class SubmissionScope
      */
     private static function idsOf(array $forms, callable $condition): array
     {
-        // apply() has already refused any other builder, and $reading leaves this read unscoped
+        // apply() has refused any other builder, and $reading leaves this read unscoped
         /** @var Builder|EloquentQueryBuilder $query */
         $query = app(SubmissionQueryBuilder::class);
 

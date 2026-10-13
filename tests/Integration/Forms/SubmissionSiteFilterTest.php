@@ -134,7 +134,7 @@ function filterUrl(string $route, array|string $parameters, ?array $filters = nu
 }
 
 /**
- * The names of the submissions with the given ids, read outside the Control Panel, sorted.
+ * The sorted names of the given submissions, read outside the Control Panel.
  *
  * @param  mixed  $rows  The rows a listing or export returned.
  * @return list<string> The submissions' names, sorted.

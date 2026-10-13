@@ -81,12 +81,13 @@ final class SiteAccess
      */
     public static function allHandles(): array
     {
-        // The facade declares `mixed`; core's Sites::all() is a collection of sites keyed by handle
+        // The facade declares `mixed`; core's Sites::all() is a collection keyed by handle
         /** @var Collection<string, SiteObject> $sites */
         $sites = Site::all();
 
-        // keys() is already indexed from zero, so UnwrapArrayValues is equivalent; array_values
-        // is there for PHPStan, which types Collection::all() as an array rather than a list.
+        // keys() is already indexed from zero, so UnwrapArrayValues is equivalent;
+        // array_values is there for PHPStan, which types Collection::all() as an array
+        // rather than a list.
         // @pest-mutate-ignore: UnwrapArrayValues
         return array_values($sites->keys()->all());
     }

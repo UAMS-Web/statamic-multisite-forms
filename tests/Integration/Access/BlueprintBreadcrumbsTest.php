@@ -135,7 +135,7 @@ function breadcrumbProp(InertiaResponse $response): mixed
 }
 
 it('links only the forms whose editor the user may open', function (): void {
-    // An es-only user may open only the es-only form's editor, so no other form is linked
+    // An es-only user may open only the es-only form's editor, so link no other form
     $this->actingAs(userWith('fields-es', ['access cp', 'configure form fields', 'access es site']));
 
     // Open the es-only form's fields editor
@@ -153,7 +153,7 @@ it('links every other form for a user who may open every editor', function (stri
     // Open the es-only form's fields editor
     $response = fieldsEditorPage($this, 'spanish');
 
-    // The positive control for the HTML assertion above: the title is in the page when allowed
+    // The positive control for the HTML assertion above: an allowed title is shown
     expect(linkedTitles($response))->toBe(['Title of english', 'Title of everywhere', 'Title of shared'])
         ->and($response->getContent())->toContain('Title of english');
 })->with(['a super user' => ['super'], 'a user with both sites' => ['both']]);

@@ -172,7 +172,7 @@ it('lists on the blueprints index only the forms whose editor the user may open'
     // Read the forms the blueprints index lists, and its HTML
     [$listed, $html] = indexedForms($this);
 
-    // The HTML check runs both ways, so a page that stopped carrying its data would fail it
+    // The HTML check runs both ways, so a page that lost its data would fail it
     expect($listed)->toBe($handles)
         ->and(str_contains($html, 'Title of english'))->toBe($english);
 })->with([
