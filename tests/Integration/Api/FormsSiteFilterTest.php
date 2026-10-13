@@ -129,8 +129,10 @@ it('filters only the forms the API exposes', function (): void {
 it('leaves the single form endpoint and a disabled API as core has them', function (): void {
     $this->getJson('/api/forms/spanish?site=en')->assertOk()->assertJsonPath('data.handle', 'spanish');
 
+    // An unknown site too, so a disabled API answers before the filter is read
     config(['statamic.api.resources.forms' => false]);
     restForms($this, ['site' => 'en'])->assertNotFound();
+    restForms($this, ['site' => 'fr'])->assertNotFound();
 });
 
 it('lists every form from GraphQL without a site argument, or with a null one', function (string $arguments): void {
@@ -157,6 +159,17 @@ it('answers a GraphQL site argument that names no configured site with a validat
     'an unknown handle' => ['fr'],
     'an empty value' => [''],
 ]);
+
+it('reads the GraphQL site argument from a variable', function (): void {
+    $query = 'query ($site: String) { forms(site: $site) { handle } }';
+
+    expect(listedHandles($this->postJson('/graphql', ['query' => $query])->assertOk()->json('data.forms')))
+        ->toBe(['english', 'everywhere', 'shared', 'spanish'])
+        ->and(listedHandles($this->postJson('/graphql', ['query' => $query, 'variables' => ['site' => 'es']])->assertOk()->json('data.forms')))
+        ->toBe(['everywhere', 'shared', 'spanish'])
+        ->and($this->postJson('/graphql', ['query' => $query, 'variables' => ['site' => 'fr']])->assertOk()->json('errors.0.message'))
+        ->toBe('validation');
+});
 
 it('filters only the forms GraphQL exposes', function (): void {
     config(['statamic.graphql.resources.forms' => ['english', 'spanish']]);

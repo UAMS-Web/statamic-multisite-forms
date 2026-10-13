@@ -120,7 +120,7 @@ The command records the site on every submission of the form that has none, and 
 Where Statamic's REST API or GraphQL exposes forms, their form listings take an optional `site` filter, which lists only the forms assigned to that site, together with the forms that have no sites:
 
 ```sh
-curl https://example.com/api/forms?site=es
+curl 'https://example.com/api/forms?site=es'
 ```
 
 ```graphql
