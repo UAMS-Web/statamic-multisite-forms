@@ -313,6 +313,6 @@ Oldest first, one entry per closed decision, so **a new entry is appended to the
 
 **Rejected.** Applying the every-site rule to `edit` only, as #77's summary words it: a user who may not edit a shared form could still delete it for every site. Treating a removed site's handle as absent from the list: the form would turn global for every user, the opposite of what its assignment says.
 
-**Residual.** Core's form blueprint editor authorizes `configure form fields` without naming the form, so the callback cannot reach it; the route stays open to such a user and is tracked in #116.
+**Residual.** Core's form blueprint editor authorizes `configure form fields` without naming the form, so the callback cannot reach it; the route stays open to such a user and is tracked in #116. Core's Duplicate action authorizes `create` on the form class without naming the form it copies, tracked in #117. Until #79 assigns a new form to its creator's sites, a form created by a user who does not cover every site is global and so beyond that user's edit. Whether saving `sites` should refuse a site the editor cannot access, now that `configure forms` is no bypass, is the question in #118.
 
 **Companion.** #77. Earlier decisions: #42, #54, #57.

@@ -98,7 +98,7 @@ Access to forms in the Control Panel follows the site access a user already has,
 - Editing a form's settings, deleting it, or editing its fields needs access to every site it is assigned to, or to every site for a form with no sites, because each change reaches all of them.
 - `configure forms` does not bypass either rule. Only super users do, which narrows what core allows that permission.
 
-A form whose `sites` names a site no longer configured is open to super users only. Core's blueprint editor is not yet covered by these rules ([#116](https://github.com/UAMS-Web/statamic-multisite-forms/issues/116)).
+A form whose `sites` names a site no longer configured is open to super users only. Core's blueprint editor and its Duplicate action on forms are not yet covered by these rules ([#116](https://github.com/UAMS-Web/statamic-multisite-forms/issues/116), [#117](https://github.com/UAMS-Web/statamic-multisite-forms/issues/117)). A form created by a user who cannot access every site has no sites, so that user cannot edit it until [#79](https://github.com/UAMS-Web/statamic-multisite-forms/issues/79) assigns new forms to their creator's sites.
 
 ## Checking a form's site in a template
 
