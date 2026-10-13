@@ -102,7 +102,7 @@ The add-on uses core's own rule for the submit request, `Site::findByUrl(URL::pr
 New submissions store the site in the data under `_site`. Core's store, indexes and file layout are untouched.
 
 - **Submissions with no `_site` are unattributed.** That covers submissions saved before the add-on and any saved without the submit route (code calling `$form->makeSubmission()->save()`, an import, another add-on), so it is an ongoing category, not only history. A non-super user sees them only when they can access every site the form is assigned to, which for a global form means every site (#40). Single-site editors therefore lose sight of pre-install submissions until they are attributed, and the release notes say so. A `multisite-forms:attribute` command assigns a site to unattributed submissions of a form (with `--dry-run` and a log of each change), for installs that want to backfill.
-- **Per-site listing and export** filter on `_site` through the query builder. The Stache filters on the key correctly and indexes it on first use (spike 2, below), so no post-filter is needed.
+- **Per-site listing and export** filter on `_site` through the query builder. The Stache filters on the key correctly and indexes it on first use (spike 2, below), and the Eloquent driver filters on it as a JSON path in the `data` column (spike 6), so no post-filter is needed on either driver.
 - **Why not a folder per site, now.** The store's filter only accepts files directly in the form folder, so `contact/clinic/*.yaml` would be invisible to core. A folder layout would mean replacing the store, its key and path rules and its indexes from the first release, and tying the add-on to Stache internals that move between versions. A folder layout can be reached later by a deterministic per-file move, so this choice is reversible and the other is not cheap. Decided in `docs/DECISIONS.md` (#43).
 
 ## Control Panel
@@ -130,6 +130,7 @@ None added in the first release. Core's `FormSubmitted`, `SubmissionSaved`, `For
 | The submit middleware runs before or after route binding differently across versions. | Test in the host on the lowest and latest supported version. |
 | A site-denying gate callback is overridden by core's policy `before`, which returns true for `configure forms`. | The callback is a global `Gate::before()`, which Laravel runs before any policy (`Gate::raw()`); it returns nothing for super users and for allowed sites. Tests cover a super user, a `configure forms` user and a plain viewer. |
 | `_site` collides with a user field. | Underscore-prefixed keys are core's parameter namespace and cannot be blueprint handles. |
+| Submissions are stored in the database through `statamic/eloquent-driver`, where `_site` is a JSON path rather than a Stache index. | Measured on SQLite (spike 6). MySQL and PostgreSQL compile the same query to their own JSON functions and are not measured; the README states the verified scope. |
 
 ## Phasing
 
@@ -137,7 +138,7 @@ Each phase ends with a host-bound test run in `statamic-multisite-forms-host` (`
 
 | Phase | Scope | Exit criteria |
 | --- | --- | --- |
-| 0. Spikes | Spikes 1 to 5 below, each recorded in `docs/DECISIONS.md` or on its ticket. | Every unverified item above is either verified or has a recorded fallback. |
+| 0. Spikes | Spikes 1 to 6 below, each recorded in `docs/DECISIONS.md` or on its ticket. | Every unverified item above is either verified or has a recorded fallback. |
 | 1. Assignment and submit | `sites` key and Sites config section; resolved view; submit middleware and 404 for unassigned sites; `{{ form }}` tag gating; `_site` recorded on new submissions. | In the two-site host, a form assigned to `en` renders on `en`, 404s on submit from `es`, and its submissions carry `_site: en`. |
 | 2. Overrides | `site_overrides` for title, email and store; overrides editor in the config section. | A form assigned to both sites emails a different recipient from each, and stores on one site only. |
 | 3. Access and APIs | Site-access gate on forms and submissions; per-site listing and export; `site` filter on REST and GraphQL; `multisite-forms:attribute`. | An editor with access to only `es` cannot list, open or export an `en` submission, and cannot see an `en`-only form. |
@@ -150,6 +151,7 @@ Each phase ends with a host-bound test run in `statamic-multisite-forms-host` (`
 3. **Tag resolution.** Resolved (#36); see the results below.
 4. **Submission listing scope.** Resolved (#37); see the results below.
 5. **Resolved view through the controller.** Resolved (#38); see the results below.
+6. **The Eloquent submissions driver.** Resolved on SQLite (#53); see the results below.
 
 ## Open questions
 
@@ -250,3 +252,33 @@ Not covered, and each is a limit on this result:
 - The first two attempts returned 419 and a mail check that saw no mail even in the control. Both instruments were fixed before any result was read, and the table above is from the run where the control produced the base recipient.
 
 Follow-up measurement for #49: the same scope applied with `app()->extend()` on the contract, instead of a subclass, left core's `Statamic\Stache\Query\SubmissionQueryBuilder` bound and scoped every read path tried. With the extender off (control) a listing returned `a,b,c`, `find()` of the `es` submission found it and the count was 3; with it on, the listing returned `a,c`, `find()` returned null, the count was 2, and `whereForm()` (the export path) returned `a,c`. Switching the extender off returned the listing to `a,b,c`. Measured in a console, not through Control Panel requests.
+
+### Spike 6: `_site` and the scope under the Eloquent submissions driver (#53)
+
+Spikes 2 and 4 ran on the Stache. The host was switched temporarily to `statamic/eloquent-driver` v5.12.2 with `form_submissions.driver` set to `eloquent`, the driver's two submission migrations run on SQLite 3.51.3, and then restored. Four submissions were saved to a probe form through `$submission->save()`: `a` and `d` with `_site: en`, `b` with `_site: es`, and `c` with no `_site`. The form's submissions folder held no files afterwards and the table held four rows, so the probe read the database and not the Stache. A stored row's `data` column read `{"name":"a","_site":"en"}`.
+
+| Query | Result |
+| --- | --- |
+| `where('form', ...)` alone | `a`, `b`, `c`, `d` |
+| `where('_site', 'en')` | `a`, `d`; `count()` returns 2 |
+| `where('_site', 'es')` | `b` |
+| `whereIn('_site', ['en', 'es'])` | `a`, `b`, `d` |
+| `whereNull('_site')` | `c` |
+| The scope's nested `whereIn` or `whereNull` | `a`, `c`, `d` |
+| Control: `where('_site', 'xx')` | none |
+
+The driver's builder maps a column that is not on its model to a JSON path in `data`, so the scope compiled to `json_extract("data", '$."_site"') in (?) or json_extract("data", '$."_site"') is null`, and a missing key reads as null, which is what the unattributed rule needs.
+
+The #49 scope was then applied with `app()->extend()` on the contract, for a user with access to `en` only. The bound class stayed `Statamic\Eloquent\Forms\SubmissionQueryBuilder`.
+
+| Read | Extender off (control) | Extender on |
+| --- | --- | --- |
+| Listing | `a`, `b`, `c`, `d` | `a`, `c`, `d` |
+| `find()` of `b` (the `es` submission) | found | null |
+| `find()` of `a` | found | found |
+| `count()` | 4 | 3 |
+| `whereForm()` (the export path) | `a`, `b`, `c`, `d` | `a`, `c`, `d` |
+
+Registration order, read in source: the driver binds the contract from its service provider's `register()`, and Laravel's `Container::bind()` drops a stale resolved instance but keeps the registered extenders, so an add-on's `extend()` from `boot()` applies on top of the driver's binding. In the probe the extender was registered after the driver had bound.
+
+Not covered, and each is a limit on this result: MySQL and PostgreSQL, whose grammars compile the JSON path to their own functions; Control Panel requests (the reads were in a console); and query performance at volume, since a JSON path is not indexed. Measured on Windows 11.

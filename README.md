@@ -16,6 +16,7 @@ Early development. The add-on installs, registers its service provider and build
 
 - PHP 8.4 or later
 - Statamic (`statamic/cms`) 6.35 or later, in a multisite install
+- Submissions in Statamic's flat files, or in a database through `statamic/eloquent-driver`. The database driver is verified on SQLite only; MySQL and PostgreSQL are not verified yet.
 
 ## Installation
 
