@@ -117,7 +117,7 @@ it('applies the site override row to the view it resolves (#75)', function (): v
 });
 
 it('reaches a driver form class through base(), not through the view', function (): void {
-    // A driver binds its own subclass of core's Form, as statamic/eloquent-driver does (#107)
+    // Make a driver's subclass of core's Form, like statamic/eloquent-driver's (#107)
     $driverForm = new class extends Form
     {
         public function model(): string
@@ -141,7 +141,7 @@ it('reaches a driver form class through base(), not through the view', function 
 
     // Build a call to the driver's method through the view
     $callModel =
-        // @phpstan-ignore method.notFound (model() is the driver's method, which the view deliberately does not have)
+        // @phpstan-ignore method.notFound (model() is the driver's; the view lacks it)
         (fn (): mixed => $view->model());
 
     // Expect the driver class only behind base(), and the view to refuse model()

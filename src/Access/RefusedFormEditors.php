@@ -47,7 +47,7 @@ final class RefusedFormEditors
     }
 
     /**
-     * Whether a link, an array with its URL under the given key, points at one of the refused editors.
+     * Whether a link (an array with its URL under a key) points at a refused editor.
      *
      * @param  mixed  $link  The link to check, expected to be an array.
      * @param  list<string>  $refused  The refused editor paths, from paths().

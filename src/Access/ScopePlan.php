@@ -7,7 +7,8 @@ namespace UAMSWeb\MultisiteForms\Access;
 /**
  * What the submission scope applies for one user in one request (#123).
  *
- * @internal Held on the request by SubmissionScope, which drops it on any evented write that could change it.
+ * @internal Held on the request by SubmissionScope, which drops it on any evented
+ *           write that could change it.
  */
 final readonly class ScopePlan
 {

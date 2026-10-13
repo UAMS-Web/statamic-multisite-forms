@@ -11,7 +11,7 @@ use Statamic\Facades\User;
 use Statamic\Sites\Site as SiteObject;
 
 /**
- * Refuses a sites selection that would leave the form outside its saver's edit (#118).
+ * Refuses a sites selection its saver could no longer edit the form under (#118).
  *
  * Editing a form needs every site it lists, or every configured site for a global
  * form (#77), so a non-super user may not save a site they cannot access, nor an

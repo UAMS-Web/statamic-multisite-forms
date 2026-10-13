@@ -30,9 +30,9 @@ use UAMSWeb\MultisiteForms\Forms\Assignment;
  */
 final class FormGate
 {
-    // tests/Integration/Access/FormGateTest.php fails when any item is removed, shown by
-    // hand for each one (#77), but a constant is not an executable line, so the coverage
-    // driver links no test to these mutants and they are never run.
+    // tests/Integration/Access/FormGateTest.php fails when any item is removed, shown
+    // by hand for each one (#77), but a constant is not an executable line, so the
+    // coverage driver links no test to these mutants and they are never run.
     // @pest-mutate-ignore: RemoveArrayItem
     /** The abilities that change a form, and so need every one of its sites. */
     public const array CHANGING = ['edit', 'delete', 'configure form fields'];

@@ -468,7 +468,7 @@ it('gives an override email the same columns as core gives a form email (#76)', 
     // Configure the sender address
     config(['mail.from.address' => $sender]);
 
-    // Core builds its email columns inside a protected method, so they are read the way the screen reads them
+    // Read the email columns the screen's way: core builds them in a protected method
     $blueprint = new ReflectionMethod(FormsController::class, 'editFormBlueprint')
         ->invoke(app(FormsController::class), storedForm('contact'));
     if (! $blueprint instanceof Blueprint) {

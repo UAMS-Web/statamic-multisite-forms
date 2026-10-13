@@ -10,7 +10,7 @@ use Statamic\Forms\Form;
 use UAMSWeb\MultisiteForms\Forms\Assignment;
 
 /**
- * Assigns a new form to its creator's sites when the creator cannot access every site (#79).
+ * Assigns a new form to the sites of a creator who cannot access every site (#79).
  *
  * A form with no sites belongs to every site, and changing it needs access to
  * every site (#77), so a scoped administrator who created one could not edit it.
@@ -26,7 +26,7 @@ use UAMSWeb\MultisiteForms\Forms\Assignment;
 final class CreatorSites
 {
     /**
-     * Assign the new form to the current user's sites when they do not cover every site.
+     * Assign the new form to the user's sites when they do not cover every site.
      *
      * @param  FormCreating  $event  The event core dispatches before a new form is written.
      */

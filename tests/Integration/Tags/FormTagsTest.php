@@ -69,8 +69,9 @@ function taggedForm(?array $sites): Form
 }
 
 /**
- * Load the `form` tag the way Antlers does, for one of its methods. With no parser,
- * as through `Statamic::tag()->fetch()`, core's `create` returns data rather than HTML.
+ * Load the `form` tag the way Antlers does, for one of its methods. With no
+ * parser, as through `Statamic::tag()->fetch()`, core's `create` returns data
+ * rather than HTML.
  *
  * @param  string  $method  The tag method to load the tag for.
  * @param  array<string, mixed>  $params  Parameters given to the tag.
@@ -207,7 +208,7 @@ it('renders an assigned form, or one with no sites, as core renders it', functio
     Blink::flush();
     $core = coreFormTag($params)->create();
 
-    // With no parser to render content, core's create returns the data a template would receive.
+    // With no parser, core's create returns the data a template would receive
     expect(rendered($ours))->toEqual(rendered($core))
         ->and(data_get(rendered($ours), 'fields.0.field'))->toContain('name="name"')
         ->and(data_get($ours, 'honeypot'))->toBe('trap')
@@ -277,7 +278,7 @@ it('returns the submission core flashed for an assigned form, and nothing before
     session()->put('form.contact.success', 'Submission successful.');
     session()->put('submission', $submission);
 
-    // Core exposes the blueprint's fields plus `id` and `date`; this form has no fields.
+    // Core exposes the blueprint's fields, plus `id` and `date`; this form has none
     expect(data_get(formTag('submission')->submission(), 'id'))->toBe($submission->id());
 });
 
@@ -383,7 +384,7 @@ it('refuses a not_assigned value that is not a setting', function (mixed $value)
 ])->throws(InvalidArgumentException::class, 'statamic-multisite-forms.not_assigned');
 
 /**
- * Load `form:assigned` the way Antlers does, as a single tag or, with content, a pair.
+ * Load `form:assigned` as Antlers does: as a single tag or, with content, a pair.
  *
  * @param  array<string, mixed>  $params  Parameters given to the tag.
  * @param  string  $content  The pair's contents, or empty for a single tag.
@@ -446,7 +447,7 @@ it('renders its contents as a pair only when the form is assigned', function ():
     // Save an English form
     taggedForm(['en']);
 
-    // With a parser, the pair renders through Antlers, which returns a Stringable rather than a string.
+    // With a parser, the pair renders through Antlers, which returns a Stringable
     $shown = assignedTag(content: '<h2>Contact us</h2>')->assigned();
 
     // Expect the contents on the English site
@@ -476,7 +477,7 @@ it('branches an Antlers template and a fetched tag on the assignment', function 
         // Fetch the answer for the contact form
         return $tag->params(['in' => 'contact'])->fetch();
     };
-    // Trusted, as a template is: Antlers leaves tags in untrusted user content unevaluated.
+    // Trusted, as a template is: Antlers leaves tags in untrusted content unevaluated
     $render = fn (): string => (string) Antlers::parse($template, [], true);
 
     // Expect both to say yes on the English site
@@ -540,7 +541,7 @@ function stringsIn(mixed $value): array
  */
 function formConfig(CoreFormTags $tag): mixed
 {
-    // Fetched with no template, create() returns data, although its signature says string
+    // With no template, create() returns data, although its signature says string
     return data_get($tag->create(), 'form_config');
 }
 
@@ -571,7 +572,7 @@ it("keeps another site's override rows out of form_config (#62)", function (): v
     // Read form_config through our tag on the English site
     $config = formConfig(formTag('create'));
 
-    // The control: core's own tag builds form_config from the stored form, rows included
+    // The control: core's tag builds form_config from the stored form, rows included
     expect(stringsIn(formConfig(coreFormTag())))->toContain('es-only@example.com')
         ->and(stringsIn($config))->not->toContain('es-only@example.com')
         ->and(stringsIn($config))->not->toContain('Contacto')

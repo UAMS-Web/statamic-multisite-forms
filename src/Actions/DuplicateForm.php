@@ -10,7 +10,7 @@ use Statamic\Contracts\Auth\User;
 use Statamic\Contracts\Forms\Form;
 
 /**
- * Core's Duplicate action on forms, refused for a form the user may not view (#117).
+ * Core's Duplicate form action, refused for a form the user cannot view (#117).
  *
  * Core's action asks only `create` on the form class and never names the form it
  * copies, so the site rules on form access (#77) could not reach it: a user with
@@ -19,15 +19,15 @@ use Statamic\Contracts\Forms\Form;
  * the add-on's gate answers.
  *
  * Statamic registers every action under the add-on's `src/Actions` by its handle
- * while booting the add-on, after core has registered its own. The short class name
- * matches core's, so this class takes core's handle, `duplicate_form`, and replaces
- * it for running the action and for listing it; the Control Panel posts the same
- * handle as before.
+ * while booting the add-on, after core has registered its own. The short class
+ * name matches core's, so this class takes core's handle, `duplicate_form`, and
+ * replaces it for running the action and for listing it; the Control Panel posts
+ * the same handle as before.
  */
 final class DuplicateForm extends CoreDuplicateForm
 {
     /**
-     * Whether the user may duplicate the form: core's check, and `view` on the form itself.
+     * Whether the user may duplicate the form: core's check, and `view` on the form.
      *
      * A selection naming no form arrives as null, which `view` refuses.
      *

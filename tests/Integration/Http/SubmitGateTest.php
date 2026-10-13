@@ -53,7 +53,7 @@ afterEach(function (): void {
 });
 
 /**
- * Save a `contact` form that stores its submissions, assigned to the given sites or global.
+ * Save a `contact` form that stores submissions, on the given sites or global.
  *
  * @param  list<string>|null  $sites  Site handles to assign, or null for a global form.
  * @return Form The saved form.
@@ -273,7 +273,7 @@ it('stays after route binding even when pushed before it', function (): void {
 });
 
 it('keeps the gate on the group when the kernel later copies its groups to the router again', function (): void {
-    // The kernel's group, priority and alias setters re-copy its groups onto the router.
+    // The kernel's group, priority and alias setters re-copy its groups to the router
     httpKernel()->prependToMiddlewarePriority(SubstituteBindings::class);
 
     // Expect the web group still to carry the gate
