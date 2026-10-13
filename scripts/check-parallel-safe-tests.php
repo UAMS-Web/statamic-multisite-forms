@@ -46,7 +46,7 @@ declare(strict_types=1);
  *            configuration-dependent; a bare failure names no cause; and larastan
  *            passes on the suppression rather than on the types. UAMS-Web/uams-statamic#1733 removed the
  *            eleven unqualified narrowings but its `^\s*assert(` search never
- *            matched the dominant fully-qualified form, and shipped no guard  - 
+ *            matched the dominant fully-qualified form, and shipped no guard  -
  *            which is exactly why 157 of them survived. Narrow by control flow
  *            instead.
  *
@@ -854,7 +854,7 @@ function fileHasNamedNamespace(array $tokens): bool
  * keyword up to the terminating `;`. Handles a multi-name `const A = 1, B = 2;`
  * (a name follows the `const` keyword or a *value-depth-0* `,`, never an `=`).
  *
- * Value nesting (`[`/`(`/`{`) is tracked so a comma *inside* an array/paren value  - 
+ * Value nesting (`[`/`(`/`{`) is tracked so a comma *inside* an array/paren value  -
  * e.g. `const A = [User::class, Post::class]`  -  does not re-arm name collection and
  * mis-record the array value (`Post`) as a declared const. Only a comma at value
  * depth 0 separates real declarations.

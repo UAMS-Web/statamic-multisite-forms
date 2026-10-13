@@ -130,7 +130,7 @@ function slowestClassTotals(string $xml): array
 
     foreach ($cases as $case) {
         // paratest's merger writes `class`; PHPUnit's own logger writes `classname`.
-        // A case carrying neither is still counted, under a name that says so  - 
+        // A case carrying neither is still counted, under a name that says so  -
         // dropping it would be the silent under-report this guard exists to remove.
         $class = $case->getAttribute('class') !== ''
             ? $case->getAttribute('class')
@@ -144,7 +144,7 @@ function slowestClassTotals(string $xml): array
     }
 
     // Every case timed at zero means the report carries no usable durations, so a
-    // PASS here would assert nothing at all. That is a setup failure, not a pass  - 
+    // PASS here would assert nothing at all. That is a setup failure, not a pass  -
     // the same reasoning the mutation smoke applies to `0 Mutations`.
     if (array_sum($totals) <= 0.0) {
         throw new RuntimeException('The JUnit report carries no test durations  -  the band cannot be verified.');
