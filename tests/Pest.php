@@ -13,6 +13,8 @@ declare(strict_types=1);
 
 use Illuminate\Support\Facades\File;
 use Statamic\Auth\File\User as UserObject;
+use Statamic\Auth\RoleRepository as FileRoleRepository;
+use Statamic\Facades\Role;
 use Statamic\Facades\Site;
 use Statamic\Facades\User;
 use Statamic\Sites\Site as SiteObject;
@@ -99,6 +101,56 @@ function superUser(): UserObject
     $user->id('admin');
     $user->email('admin@example.com');
     $user->makeSuper();
+
+    return $user;
+}
+
+/**
+ * Point user roles at a file of this test's own, so parallel workers never share one.
+ *
+ * Pass the path it returns to `File::delete()` after the test.
+ *
+ * @throws RuntimeException When the bound roles repository does not read a file.
+ */
+function useTemporaryRoles(): string
+{
+    $path = sys_get_temp_dir().'/msf-roles-'.uniqid('', true).'.yaml';
+
+    $roles = Role::getFacadeRoot();
+    if (! $roles instanceof FileRoleRepository) {
+        throw new RuntimeException('The roles repository does not read a roles file.');
+    }
+
+    $roles->path($path);
+
+    return $path;
+}
+
+/**
+ * A user held in memory with one role of its own carrying exactly these permissions.
+ *
+ * The role is saved to the roles file {@see useTemporaryRoles()} pointed at. The id
+ * keys core's permission cache, so give every user in a test its own.
+ *
+ * @param  list<string>  $permissions
+ *
+ * @throws RuntimeException When the users repository makes something other than a user.
+ */
+function userWith(string $id, array $permissions): UserObject
+{
+    $role = Role::make($id);
+    $role->title($id);
+    $role->permissions($permissions);
+    $role->save();
+
+    $user = User::make();
+    if (! $user instanceof UserObject) {
+        throw new RuntimeException('The users repository did not make a user.');
+    }
+
+    $user->id($id);
+    $user->email("{$id}@example.com");
+    $user->assignRole($id);
 
     return $user;
 }
