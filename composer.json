@@ -89,6 +89,11 @@
         "stan": "phpstan analyse --no-progress --memory-limit=2G",
         "test:mutate-ignore": "@php scripts/check-mutate-ignore.php",
         "test:mutation-instrument": "@php .claude/skills/pcov-setup/scripts/check-mutation-instrument.php",
+        "test:parallel-safe": "@php scripts/check-parallel-safe-tests.php",
+        "test:bands": [
+            "@php scripts/check-skip-baseline.php --report=junit-parallel.xml --band=parallel",
+            "@php scripts/check-slowest-class.php --report=junit-parallel.xml --band=parallel"
+        ],
         "test:scripts": [
             "node scripts/check-no-emoji.mjs",
             "node scripts/check-decision-log-order.mjs",
@@ -98,6 +103,7 @@
             "@test:scripts",
             "@test:mutate-ignore",
             "@test:mutation-instrument",
+            "@test:parallel-safe",
             "@test:pint",
             "@test:refactor",
             "@stan",

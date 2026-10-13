@@ -1,7 +1,7 @@
 name: CI
 
 # The jobs mirror the scripts `composer ci` runs locally, in the same cost order:
-#   composer-validate -> synced-files -> no-emoji -> scripts -> mutate-ignore -> mutation-instrument -> pint -> rector -> phpstan -> pest
+#   composer-validate -> synced-files -> no-emoji -> scripts -> mutate-ignore -> mutation-instrument -> parallel-safe -> pint -> rector -> phpstan -> pest
 # Each job `needs:` the one before it, so a failure skips every more expensive job
 # after it. The deliberate trade: a successful run is the sum of the jobs, not the
 # longest one. When a job's command changes here, change the matching `composer`
@@ -116,9 +116,23 @@ jobs:
       # has logic to mutate.
       - run: composer test:mutation-instrument
 
+  parallel-safe:
+    name: Parallel-safe tests (no shared state)
+    needs: mutation-instrument
+    runs-on: ubuntu-latest
+    timeout-minutes: 10
+    steps:
+      - uses: actions/checkout@v7
+      - uses: shivammathur/setup-php@v2
+        with:
+          php-version: '8.4'
+          coverage: none
+      # Dependency-free, so it needs PHP and nothing else.
+      - run: composer test:parallel-safe
+
   pint:
     name: Pint
-    needs: mutation-instrument
+    needs: parallel-safe
     runs-on: ubuntu-latest
     timeout-minutes: 10
     steps:
@@ -154,4 +168,11 @@ jobs:
     steps:
       - uses: actions/checkout@v7
       - uses: ./.github/actions/setup
-      - run: composer test
+      # --log-junit feeds the band checks below; it changes nothing about what runs.
+      - name: Run the suite
+        run: composer test -- --display-all-issues --log-junit junit-parallel.xml
+
+      # Fails when more tests skipped than tests/skip-baseline.json records (a silent skip
+      # must not read as a pass), or when one class's cost nears the band's.
+      - name: Check the band reports
+        run: composer test:bands
