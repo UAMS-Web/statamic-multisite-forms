@@ -291,3 +291,16 @@ Oldest first, one entry per closed decision, so **a new entry is appended to the
 **Residual.** The name takes precedence over a form whose handle is `assigned` in the `{{ form:{handle} }}` shorthand, as core's tag names already do for `create`, `errors` and the rest; such a form renders with `{{ form:create in="assigned" }}`.
 
 **Companion.** #60. Earlier decisions: #39, #73.
+
+
+## 2026-10-13: A resolved view stays a core `Form`; driver-specific code reads `base()` (#107)
+
+**Decision.** A site-resolved view (`SiteForm`) stays a subclass of core's `Statamic\Forms\Form` whatever class the form contract is bound to. Where a driver binds its own class, as `statamic/eloquent-driver` does with `Statamic\Eloquent\Forms\Form`, that class's own methods are reached through `SiteForm::base()`, which returns the stored form. The README documents it (#109).
+
+**Why.** Measured in #83, a view carries the same values as its base under the Eloquent forms driver; the only difference is type identity, so `model()` throws on a view and `instanceof` the driver's class is false. Neither the add-on nor the driver calls either on a view: the driver uses `model()` only in its own `save()` and `delete()`, which a view refuses, and its submissions read only the form's handle. The case that can meet it is outside code holding `$submission->form()`, and `base()` already serves it for any binding, not only this driver. Adding forwarding later is not breaking, so nothing is closed off.
+
+**Rejected.** Forwarding the methods a view does not declare to its base through `__call`: `model()` would work but `instanceof` still would not, and a blanket forward lets a setter such as `model($model)` write to the base form, which the read-only view exists to prevent, so it would need an allow-list kept in step with each driver, for no caller known to need it. A view class per driver, built from a shared trait and interface: it gives `instanceof` for one driver only, misses any other binding, and changes `FormResolver::resolve()`'s return type, which breaks code type-hinting `SiteForm`.
+
+**Residual.** Any app that binds its own form class has the same gap and the same answer. Control Panel form screens and the Eloquent submissions driver were not measured with the forms driver on (spike 7).
+
+**Companion.** #107; measurement in #83; documentation in #109.
