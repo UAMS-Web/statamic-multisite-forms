@@ -1,0 +1,104 @@
+{
+    "name": "uams-web/statamic-multisite-forms",
+    "description": "Per-site forms for multisite Statamic: site assignment, per-site overrides, and site-separated submissions in flat files.",
+    "keywords": [
+        "statamic",
+        "statamic-addon",
+        "forms",
+        "multisite"
+    ],
+    "type": "statamic-addon",
+    "homepage": "https://github.com/UAMS-Web/statamic-multisite-forms",
+    "authors": [
+        {
+            "name": "UAMS Web Services"
+        },
+        {
+            "name": "Josh Daugherty",
+            "role": "Web Developer"
+        }
+    ],
+    "support": {
+        "issues": "https://github.com/UAMS-Web/statamic-multisite-forms/issues",
+        "source": "https://github.com/UAMS-Web/statamic-multisite-forms"
+    },
+    "autoload": {
+        "psr-4": {
+            "UAMSWeb\\MultisiteForms\\": "src/"
+        }
+    },
+    "autoload-dev": {
+        "psr-4": {
+            "UAMSWeb\\MultisiteForms\\Tests\\": "tests/"
+        }
+    },
+    "extra": {
+        "statamic": {
+            "name": "Multisite Forms",
+            "description": "Make Statamic forms per-site in a multisite install."
+        },
+        "laravel": {
+            "providers": [
+                "UAMSWeb\\MultisiteForms\\ServiceProvider"
+            ]
+        },
+        "composer-exit-on-patch-failure": true,
+        "patches": {
+            "pestphp/pest-plugin-mutate": {
+                "Launch each mutant child process so a run cannot score every mutant killed without executing one (temporary)": "patches/pest-plugin-mutate-mutant-process-launch.patch",
+                "Stop three silent @pest-mutate-ignore parsing defects suppressing nothing or the wrong set (temporary)": "patches/pest-plugin-mutate-annotation-parsing.patch",
+                "Let a mutant child on Windows run its tests and write files, so its failure is a real kill (temporary)": "patches/pest-plugin-mutate-windows-mutant-child.patch",
+                "Drop the run's own --filter from each mutant child so a filtered run cannot score every mutant killed (temporary)": "patches/pest-plugin-mutate-drop-run-filter.patch",
+                "Widen or refuse a Windows mutant child's filter that would pass the cmd.exe command-line limit (temporary)": "patches/pest-plugin-mutate-windows-filter-length.patch",
+                "Create the mutations directory and fail on a mutated source that cannot be written (temporary)": "patches/pest-plugin-mutate-write-mutated-source.patch",
+                "Drop the parallel runner's options from each mutant child so a parallel run cannot score every mutant killed (temporary)": "patches/pest-plugin-mutate-drop-parallel-runner-options.patch"
+            }
+        }
+    },
+    "require": {
+        "php": "^8.3",
+        "statamic/cms": "^6.35"
+    },
+    "require-dev": {
+        "cweagans/composer-patches": "^2.0",
+        "driftingly/rector-laravel": "^2.6",
+        "larastan/larastan": "^3.13",
+        "laravel/pint": "^1.32",
+        "orchestra/testbench": "^11.3",
+        "pestphp/pest": "^5.3",
+        "pestphp/pest-plugin-phpstan": "^5.2",
+        "rector/rector": "^2.7"
+    },
+    "config": {
+        "sort-packages": true,
+        "platform": {
+            "php": "8.4.1"
+        },
+        "allow-plugins": {
+            "cweagans/composer-patches": true,
+            "pestphp/pest-plugin": true,
+            "pixelfear/composer-dist-plugin": true
+        }
+    },
+    "scripts": {
+        "test": "pest --testsuite=Unit,Integration",
+        "stan": "phpstan analyse --no-progress --memory-limit=2G",
+        "ci": [
+            "@stan",
+            "@test:pint",
+            "@test:refactor",
+            "@test"
+        ],
+        "refactor": "rector",
+        "refactor:sweep": "rector --clear-cache --config=rector-sweep.php",
+        "test:refactor": "rector --dry-run",
+        "test:refactor:sweep": "rector --dry-run --clear-cache --config=rector-sweep.php",
+        "pint": "pint",
+        "test:pint": "pint --test",
+        "mutate": [
+            "@php vendor/bin/pest --mutate --path=src"
+        ]
+    },
+    "minimum-stability": "stable",
+    "prefer-stable": true
+}
