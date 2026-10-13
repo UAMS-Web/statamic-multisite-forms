@@ -1,7 +1,7 @@
 name: CI
 
 # The jobs mirror the scripts `composer ci` runs locally, in the same cost order:
-#   composer-validate -> synced-files -> no-emoji -> scripts -> mutate-ignore -> mutation-instrument -> parallel-safe -> pint -> rector -> phpstan -> pest
+#   composer-validate -> synced-files -> no-emoji -> scripts -> mutate-ignore -> mutation-instrument -> parallel-safe -> pint -> rector -> phpstan -> pest -> compatibility
 # Each job `needs:` the one before it, so a failure skips every more expensive job
 # after it. The deliberate trade: a successful run is the sum of the jobs, not the
 # longest one. When a job's command changes here, change the matching `composer`
@@ -183,3 +183,45 @@ jobs:
       # must not read as a pass), or when one class's cost nears the band's.
       - name: Check the band reports
         run: composer test:bands
+
+  # The add-on promises `statamic/cms` at its `composer.json` constraint and PHP ^8.4, and every
+  # job above runs one combination. These legs run the dependency-sensitive checks (Larastan and
+  # Pest) against the others:
+  #   - lowest: the lowest `statamic/cms` the constraint allows, with the dependencies it needs
+  #     pulled to their lowest, so an API newer than the declared floor fails here.
+  #   - php85: the locked dependencies on PHP 8.5.
+  # The lowest bound is derived from the constraint in `composer.json`, never written here, so
+  # raising the floor (when code starts to need a newer `statamic/cms` API) moves this leg with it.
+  # Check names carry no version number for the same reason: the ruleset's list stays stable.
+  # Only the `statamic/cms` dependency closure is lowered; the dev tooling stays locked. The
+  # update rewrites `composer.lock` in the runner only.
+  compatibility:
+    name: Compatibility (${{ matrix.name }})
+    needs: pest
+    runs-on: ubuntu-latest
+    timeout-minutes: 20
+    strategy:
+      fail-fast: false
+      matrix:
+        include:
+          - name: lowest statamic/cms
+            php: '8.4'
+            lowest: true
+          - name: PHP 8.5
+            php: '8.5'
+            lowest: false
+    steps:
+      - uses: actions/checkout@v7
+      - uses: ./.github/actions/setup
+        with:
+          php-version: ${{ matrix.php }}
+
+      - name: Lower statamic/cms and its dependencies to their lowest allowed versions
+        if: matrix.lowest
+        run: composer update statamic/cms --prefer-lowest --with-all-dependencies --no-interaction --no-progress
+
+      - name: Show the resolved statamic/cms
+        run: composer show statamic/cms | grep -E '^(name|versions)'
+
+      - run: composer stan
+      - run: composer test

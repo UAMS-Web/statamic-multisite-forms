@@ -1,13 +1,19 @@
 name: Set up PHP and Composer
-description: Install PHP 8.4, restore the Composer cache, and install the locked dependencies. Run after actions/checkout.
+description: Install PHP (8.4 by default), restore the Composer cache, and install the locked dependencies. Run after actions/checkout.
+
+inputs:
+  php-version:
+    description: The PHP version to install.
+    required: false
+    default: '8.4'
 
 runs:
   using: composite
   steps:
-    - name: Set up PHP 8.4
+    - name: Set up PHP ${{ inputs.php-version }}
       uses: shivammathur/setup-php@v2
       with:
-        php-version: '8.4'
+        php-version: ${{ inputs.php-version }}
         coverage: none
         tools: composer:v2
 
@@ -20,7 +26,7 @@ runs:
       uses: actions/cache@v6
       with:
         path: ${{ steps.composer-cache.outputs.dir }}
-        key: composer-${{ runner.os }}-${{ hashFiles('composer.lock') }}
+        key: composer-${{ runner.os }}-php${{ inputs.php-version }}-${{ hashFiles('composer.lock') }}
         restore-keys: composer-${{ runner.os }}-
 
     - name: Install Composer dependencies
