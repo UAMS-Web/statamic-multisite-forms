@@ -41,6 +41,8 @@ final class AttributeCommandTest extends TestCase
 
         foreach (['en', 'es', null, null] as $index => $site) {
             $submission = $form->makeSubmission();
+            // Core's default id has 0.1ms resolution, so two saved that close would share one
+            $submission->id("msf-host-attribute-{$index}");
             $submission->set('name', ($site ?? 'none').$index);
             if ($site !== null) {
                 $submission->set('_site', $site);

@@ -51,6 +51,8 @@ final class SubmissionSiteScopeTest extends TestCase
 
         foreach (['en', 'es', null] as $site) {
             $submission = $form->makeSubmission();
+            // Core's default id has 0.1ms resolution, so two saved that close would share one
+            $submission->id('msf-host-scoped-'.($site ?? 'none'));
             $submission->set('name', $site ?? 'none');
             if ($site !== null) {
                 $submission->set('_site', $site);
