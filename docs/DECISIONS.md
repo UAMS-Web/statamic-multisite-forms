@@ -223,7 +223,7 @@ Oldest first, one entry per closed decision, so **a new entry is appended to the
 
 **Rejected.** Seeding Blink from a middleware: misses the context case and cannot render empty. Seeding every form on every front-end request: the same gaps, plus a lookup of every form per request. Logging every render: a layout with the form in several places floods the log. Logging at `debug`: hides the authoring slip the warning exists to show.
 
-**Residual.** Another add-on, or an app-level `app/Tags` class, that also registers the `form` handle conflicts with this one: core registers app tags before add-ons boot, so this add-on silently replaces an app's, and between two add-ons whichever registers last wins. An invalid `not_assigned` value is reported only when a page meets an unassigned form. When the tag is fetched with no parser (`Statamic::tag('form:create')->fetch()`), core returns the form's data as an array, and a gated tag returns an empty string instead, which a template indexing into the result does not expect.
+**Residual.** Another add-on, or an app-level `app/Tags` class, that also registers the `form` handle conflicts with this one: core registers app tags before add-ons boot, so this add-on silently replaces an app's, and between two add-ons whichever registers last wins. An invalid `not_assigned` value is reported only when a page meets an unassigned form. When the tag is fetched with no parser (`Statamic::tag('form:create')->fetch()`), core returns the form's data as an array, and a gated tag returns an empty string instead, which a template indexing into the result does not expect. Decided in #89: the gated tag returns an empty array on that path (#100).
 
 **Companion.** #73. Earlier decision: #39. Spec: `docs/SPEC.md`.
 
@@ -239,3 +239,29 @@ Oldest first, one entry per closed decision, so **a new entry is appended to the
 **Residual.** `SubmissionCreating` halts the same way, so an app that halts both events with listeners registered before the add-on's still saves the submission unattributed. When `FormSubmitted` is halted and submissions are not stored, the email job receives the submission without `_site`; nothing reads `_site` from an email. The site comes from the referrer, which the visitor controls, so a visitor can attribute a submission to any site the form is assigned to, as visiting that site's page would; core's email site follows the same header.
 
 **Companion.** #74. Spec: `docs/SPEC.md` (Recording the site).
+
+
+## 2026-10-13: A gated `form:create` fetched with no parser returns an empty array (#89)
+
+**Decision.** When `form:create` is gated for an unassigned form and the tag is fetched with no parser (`Statamic::tag('form:create')->fetch()`), it returns an empty array. With a parser, in Antlers and Blade tag pairs, it keeps returning an empty string.
+
+**Why.** Core returns an array on that path, so an empty array keeps the type a template expects, and it is the value core itself returns there when it has nothing: `user:passkeys` returns `[]` when it cannot parse contents. It is falsy, so the guard a template author naturally writes, `@if ($form)`, skips it, and `foreach` and `count()` over the result work. Measured against the ways a template reads the result, with warnings raised as exceptions as Laravel raises them: an empty string errors on `foreach ($form['fields'])` and on `foreach ($form)`; an empty array errors only on an unguarded index.
+
+**Rejected.** Keeping the empty string: it costs nothing to build and leaves the return type depending on assignment. An array with the keys a template reads (`attrs`, `params`, `fields`, `sections`), all empty: it is truthy, so `@if ($form)` passes and the template renders a form with no `action`, which then errors. `null`: falsy like an empty array, but not the type core returns.
+
+**Residual.** A template that reads `$form['attrs']['action']` without a guard errors on an unassigned form whatever the tag returns: only a real form satisfies it, and rendering one is what the gate prevents. The README documents the guard. Under the `404` setting the tag aborts on every path, so this applies to `empty` only.
+
+**Companion.** #89; build in #100. Earlier decisions: #39, #73.
+
+
+## 2026-10-13: The Sites field does not check site access, as core's collection sites do not (#85)
+
+**Decision.** The Sites field on a form's settings screen accepts any configured site, whether or not the signed-in editor may view it. Its dropdown still lists only the sites the editor may view, as core's `sites` fieldtype filters it.
+
+**Why.** Only a super user or a user with `configure forms` reaches the screen (`FormPolicy::before`), a structural permission that already lets them change the form's blueprint and settings or delete it. Core treats the matching collection setting the same way: `CollectionsController::update` saves a collection's `sites` without checking site access, and core checks site access for content within a site (entries, terms, globals, navigation), not for structure configuration. Refusing a site would make forms stricter than collections for no gain over what the permission already grants.
+
+**Rejected.** Refusing any handle the editor cannot view, and merging an existing assignment to such a site back in on save: stricter than core, and it needs a rule that reads the current user's permissions. Refusing only additions: the same cost, with the same small gain.
+
+**Residual.** Whether saving the screen drops an existing assignment to a site the editor cannot view is not yet measured. The server passes the stored handles through and sends that site to the browser marked invalid; what the Control Panel's select input posts back is measured in #101, and a drop would be a bug filed from there, since a form assigned only to that site would save as global.
+
+**Companion.** #85; measurement in #101. Earlier decision: #70.
