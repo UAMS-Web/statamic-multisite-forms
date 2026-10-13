@@ -122,3 +122,13 @@ Oldest first, one entry per closed decision, so **a new entry is appended to the
 
 **Companion.** #17. Follow-ups: #25 (README), #26 (submission checklist), #27 (editions can be added later).
 
+## 2026-10-13: Submissions stay in core's layout and record their site in a `_site` key (#43)
+
+**Decision.** A submission is stored where core stores it, `<submissions dir>/<form handle>/<id>.yaml`, and the add-on records the originating site in a reserved `_site` data key. Submissions saved before the add-on carry no key and are unattributed. No per-site folder is introduced.
+
+**Why.** It replaces nothing in core. Core's `FormSubmissionsStore` reads only files directly inside a form's folder and takes the handle from that folder name, so a per-site folder would need its own store, handle parsing and `Submission::path()`, all Stache internals that move between versions. The `_site` key is measured to work: it filters correctly, including `whereNull` for unattributed submissions, and is indexed on first use (spike 2, #35), and a site-resolved form keeps its handle, so its submissions land in the form's own folder (spike 5, #38). Removing the add-on leaves every submission visible to core. Per-site Control Panel isolation comes from the query scope, not the directory.
+
+**Rejected.** A folder per site (`<handle>/<site>/<id>.yaml`): it replaces core's store, needs a migration command for existing data, and hides submissions from core if the add-on is removed. Its benefit, per-site directories visible in Git, stays reachable later by a one-way, file-by-file move, which is why choosing the flat layout first is the reversible order.
+
+**Companion.** #43. Spec: `docs/SPEC.md`.
+

@@ -103,7 +103,7 @@ New submissions store the site in the data under `_site`. Core's store, indexes 
 
 - **Existing submissions have no `_site`.** They are unattributed. They remain visible to anyone who could see them before. A `multisite-forms:attribute` command assigns a site to unattributed submissions of a form (with `--dry-run` and a log of each change), for installs that want to backfill.
 - **Per-site listing and export** filter on `_site` through the query builder. The Stache filters on the key correctly and indexes it on first use (spike 2, below), so no post-filter is needed.
-- **Why not a folder per site, now.** The store's filter only accepts files directly in the form folder, so `contact/clinic/*.yaml` would be invisible to core. A folder layout would mean replacing the store, its key and path rules and its indexes from the first release, and tying the add-on to Stache internals that move between versions. A folder layout can be reached later by a deterministic per-file move, so this choice is reversible and the other is not cheap. The recorded decision is in `docs/DECISIONS.md` once the operator closes it.
+- **Why not a folder per site, now.** The store's filter only accepts files directly in the form folder, so `contact/clinic/*.yaml` would be invisible to core. A folder layout would mean replacing the store, its key and path rules and its indexes from the first release, and tying the add-on to Stache internals that move between versions. A folder layout can be reached later by a deterministic per-file move, so this choice is reversible and the other is not cheap. Decided in `docs/DECISIONS.md` (#43).
 
 ## Control Panel
 
@@ -155,7 +155,7 @@ Each phase ends with a host-bound test run in `statamic-multisite-forms-host` (`
 - [ ] Unattributed legacy submissions: visible to everyone who could see them before (proposed), or only to users with access to all sites.
 - [ ] Is access-based scoping (proposed) enough for the first release, or is a selected-site filter on the forms index required?
 - [ ] Who may assign a form to a site: anyone who can edit the form (proposed), or only users with access to every site being added.
-- [ ] Submissions as a flat store with `_site` (proposed) or a folder per site; this closes in `docs/DECISIONS.md` as a decision fork.
+- [x] Submissions as a flat store with `_site` or a folder per site. Decided: flat store with `_site` (#43, `docs/DECISIONS.md`).
 - [ ] Whether the add-on binds its own `SubmissionQueryBuilder` to scope submissions by site (proposed by spike 4), or scopes with controller overrides or a filter parameter instead.
 
 ## Test plan
