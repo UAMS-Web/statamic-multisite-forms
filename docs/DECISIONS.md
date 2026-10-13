@@ -156,3 +156,15 @@ Oldest first, one entry per closed decision, so **a new entry is appended to the
 
 **Companion.** #40. Spec: `docs/SPEC.md`. Related: #49 (the scope mechanism).
 
+## 2026-10-13: `configure forms` does not bypass the site scope (#54)
+
+**Decision.** A non-super user holding `configure forms` is scoped to their accessible sites like any other non-super user, for both forms and submissions. Only super users see every site. The form-level denial is a global `Gate::before()` callback, because core's form policies return true from their own `before()` for `configure forms`, and Laravel lets a global `before` callback decide ahead of any policy while an `after` callback can change only a null result.
+
+**Why.** In a multisite install the people who build forms for one site are the ones given `configure forms`. If that permission bypassed the scope, per-site isolation would protect only plain viewers, and every site's form builders would read every site's submissions.
+
+**Rejected.** Letting `configure forms` bypass the scope, as core's policies do today: no surprise for an existing form admin, but it leaves isolation to the least-privileged users only.
+
+**Cost and residual.** This narrows what core grants `configure forms`; the release that ships the scope says so. A scoped `configure forms` user can still edit another site's `site_overrides` and redirect its future email; who may edit a site's settings is #42.
+
+**Companion.** #54. Spec: `docs/SPEC.md`. Related: #40, #49.
+
