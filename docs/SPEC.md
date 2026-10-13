@@ -110,7 +110,7 @@ New submissions store the site in the data under `_site`. Core's store, indexes 
 No Control Panel view is replaced.
 
 - **Form visibility.** Core's index keeps only forms the user `can('view')`. The add-on adds a gate callback on the form and submission abilities: a form with a non-empty `sites` list is denied to a user who has no `access {site} site` for any assigned site. Super users are untouched. The index therefore scopes itself.
-- **Submission visibility.** A user sees submissions whose `_site` is a site they can access, and unattributed submissions only when they can access every site the form is assigned to. Every Control Panel read goes through `Form::querySubmissions()` or `FormSubmission::find()`, which resolve to the container-bound `SubmissionQueryBuilder` contract. One bound subclass that adds the user's site scope therefore covers the listing, the detail view and delete without replacing a controller (spike 4). Whether that binding is acceptable is a decision, not a settled design: see the open questions.
+- **Submission visibility.** A user sees submissions whose `_site` is a site they can access, and unattributed submissions only when they can access every site the form is assigned to. Every Control Panel read goes through `Form::querySubmissions()` or `FormSubmission::find()`, which resolve to the container-bound `SubmissionQueryBuilder` contract. The add-on decorates that contract with `app()->extend()`, adding the site scope through the public query API, so the listing, detail view, delete, export and the forms index count are scoped without replacing a controller or core's builder class (spike 4, decided in #49). The scope applies only to Control Panel requests by non-super users, because the same builder serves the API and the `{{ form:submissions }}` tag.
 - **Permissions.** No new keys. Per-site access is the intersection of a core form permission and a core site permission, so an administrator already has the controls. This differs from per-form-per-site keys on purpose: it is less expressive and far less to keep correct. If per-form-per-site grants are demanded, they are an addition.
 - **Site selector.** Core's Control Panel already tracks a selected site. Making the forms index filter by the *selected* site, instead of by access, needs UI and is deferred.
 
@@ -156,7 +156,7 @@ Each phase ends with a host-bound test run in `statamic-multisite-forms-host` (`
 - [ ] Is access-based scoping (proposed) enough for the first release, or is a selected-site filter on the forms index required?
 - [ ] Who may assign a form to a site: anyone who can edit the form (proposed), or only users with access to every site being added.
 - [x] Submissions as a flat store with `_site` or a folder per site. Decided: flat store with `_site` (#43, `docs/DECISIONS.md`).
-- [ ] Whether the add-on binds its own `SubmissionQueryBuilder` to scope submissions by site (proposed by spike 4), or scopes with controller overrides or a filter parameter instead.
+- [x] How submissions are scoped by site in the Control Panel. Decided: decorate the `SubmissionQueryBuilder` contract with `app()->extend()` (#49, `docs/DECISIONS.md`).
 
 ## Test plan
 
@@ -245,3 +245,5 @@ Not covered, and each is a limit on this result:
 - The probe attached its middleware to the route object. Attaching from an add-on, through a middleware group, was not tried. Group middleware is sorted by Laravel's priority list, so a class outside the list should land after `SubstituteBindings`, but that is reasoning, not a measurement.
 - CSRF protection (`PreventRequestForgery`) was removed from the probe route to submit without a token. The design does not touch it.
 - The first two attempts returned 419 and a mail check that saw no mail even in the control. Both instruments were fixed before any result was read, and the table above is from the run where the control produced the base recipient.
+
+Follow-up measurement for #49: the same scope applied with `app()->extend()` on the contract, instead of a subclass, left core's `Statamic\Stache\Query\SubmissionQueryBuilder` bound and scoped every read path tried. With the extender off (control) a listing returned `a,b,c`, `find()` of the `es` submission found it and the count was 3; with it on, the listing returned `a,c`, `find()` returned null, the count was 2, and `whereForm()` (the export path) returned `a,c`. Switching the extender off returned the listing to `a,b,c`. Measured in a console, not through Control Panel requests.

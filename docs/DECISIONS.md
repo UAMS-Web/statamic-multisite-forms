@@ -132,3 +132,15 @@ Oldest first, one entry per closed decision, so **a new entry is appended to the
 
 **Companion.** #43. Spec: `docs/SPEC.md`.
 
+## 2026-10-13: Submissions are scoped by site by decorating the query builder contract (#49)
+
+**Decision.** The add-on scopes Control Panel submission reads by site with `app()->extend()` on the `SubmissionQueryBuilder` contract: whatever builder the container produces gets a `_site` where-clause (the user's accessible sites, plus unattributed submissions as #40 decides). The scope applies only to Control Panel requests by non-super users. No core class or controller is replaced.
+
+**Why.** Every Control Panel read (listing, detail view, delete, export and the forms index count) resolves that contract. Decorating it was measured to scope each path while core's builder stays bound (spike 4, #37, and the follow-up on #49), and it uses only the public query API, so it should still apply on top of a different submissions driver.
+
+**Rejected.** Binding a subclass of core's Stache builder: replaces the bound class and would replace another driver's builder. Overriding the Control Panel controllers: a larger surface that misses any read it does not override. A filter parameter only: a convenience, not access control.
+
+**Risk accepted.** The same builder serves the API and the `{{ form:submissions }}` tag, so the request-context condition is load-bearing: tests must show it scopes Control Panel requests and leaves the others alone.
+
+**Companion.** #49. Spec: `docs/SPEC.md`.
+
