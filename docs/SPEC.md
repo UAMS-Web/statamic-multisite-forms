@@ -131,6 +131,7 @@ None added in the first release. Core's `FormSubmitted`, `SubmissionSaved`, `For
 | A site-denying gate callback is overridden by core's policy `before`, which returns true for `configure forms`. | The callback is a global `Gate::before()`, which Laravel runs before any policy (`Gate::raw()`); it returns nothing for super users and for allowed sites. Tests cover a super user, a `configure forms` user and a plain viewer. |
 | `_site` collides with a user field. | Underscore-prefixed keys are core's parameter namespace and cannot be blueprint handles. |
 | Submissions are stored in the database through `statamic/eloquent-driver`, where `_site` is a JSON path rather than a Stache index. | Measured on SQLite (spike 6). MySQL and PostgreSQL compile the same query to their own JSON functions and are not measured; the README states the verified scope. |
+| Forms are stored in the database through `statamic/eloquent-driver`, whose form class adds a model the resolved view does not copy. | Measured (spike 7): the view carries the same values as its base form. It is not an instance of the driver's class and has no `model()`; whether to close that is #107. |
 
 ## Phasing
 
@@ -152,6 +153,7 @@ Each phase ends with a host-bound test run in `statamic-multisite-forms-host` (`
 4. **Submission listing scope.** Resolved (#37); see the results below.
 5. **Resolved view through the controller.** Resolved (#38); see the results below.
 6. **The Eloquent submissions driver.** Resolved on SQLite (#53); see the results below.
+7. **The resolved view under the Eloquent forms driver.** Resolved (#83); see the results below. Its one gap is a decision in #107.
 
 ## Open questions
 
@@ -282,3 +284,27 @@ The #49 scope was then applied with `app()->extend()` on the contract, for a use
 Registration order, read in source: the driver binds the contract from its service provider's `register()`, and Laravel's `Container::bind()` drops a stale resolved instance but keeps the registered extenders, so an add-on's `extend()` from `boot()` applies on top of the driver's binding. In the probe the extender was registered after the driver had bound.
 
 Not covered, and each is a limit on this result: MySQL and PostgreSQL, whose grammars compile the JSON path to their own functions; Control Panel requests (the reads were in a console); and query performance at volume, since a JSON path is not indexed. Measured on Windows 11.
+
+### Spike 7: the resolved view under the Eloquent forms driver (#83)
+
+`SiteForm` copies the properties core's `Form` declares, so a form class with more of its own would lose them in a view. The host was switched temporarily to `statamic/eloquent-driver` v5.12.2 (commit `5b8f88b9`) with `forms.driver` set to `eloquent` and the driver's forms migration run on SQLite, then restored. Submissions stayed on the file driver. The form contract was then bound to `Statamic\Eloquent\Forms\Form` and the repository to `Statamic\Eloquent\Forms\FormRepository`. That class extends core's `Form`, adds one property, `model`, and declares `fromModel`, `toModel`, `makeModelFromContract`, `model`, `save` and `delete`.
+
+A probe form with a blueprint, an email, `store`, a honeypot, `sites: [en]` and one submission was saved, read back with `Form::find()`, and resolved for `en`. The form folder held no file and the `forms` table held the row, so the probe read the database. The same probe was run first on core's file driver as the control.
+
+| Read, view against its base | File driver (control) | Eloquent forms driver |
+| --- | --- | --- |
+| Handle, title, email, store, honeypot, `sites` | same | same |
+| Blueprint handle and fields | same | same |
+| Action URL | same | same |
+| `submissions()` and `querySubmissions()->count()` | same | same |
+| `toAugmentedArray()` and `toArray()` | same | same |
+| Resolved for `es` | null | null |
+| A submission saved through the view | stored on the base form | stored on the base form |
+| View is an instance of the bound class | yes (`Form`) | no |
+| `model()` on the view | not defined on core's `Form` | throws `BadMethodCallException` |
+
+Within the driver's forms code, `model()` is called on a form only in its own `save()` and `delete()`, which a view refuses, and its `Submission` reads only the form's handle. The gap reaches code outside the add-on through `form()` on a submission made through a view, which returns the view, so a listener that calls `model()` on it or checks for the driver's class fails under this driver alone. That is filed as a decision in #107 rather than changed here.
+
+The host's Feature tests for the tags, the submit gate, `_site` recording, `form:assigned` and the Phase 1 exit criterion (`FormTagsTest`, `SubmitGateTest`, `RecordSubmitSiteTest`, `FormAssignedTest`, `PhaseOneExitTest`) were also run against the migrated database with the Eloquent forms driver on: 14 passed, and the forms they create were rows in the `forms` table.
+
+Not covered: Control Panel requests on the form screens, the Eloquent submissions driver at the same time, MySQL and PostgreSQL. Measured on Windows 11 with `statamic/cms` v6.35.1 and PHP 8.4.20; macOS is not yet measured.
