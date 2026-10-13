@@ -3,8 +3,9 @@
 declare(strict_types=1);
 
 /**
- * `composer.json` carries every field the submission checklist lists as a prerequisite for a
- * public package (#26). The test fails when one is dropped; it does not submit anything.
+ * `composer.json` carries every field the submission checklist lists as a
+ * prerequisite for a public package (#26). The test fails when one is dropped;
+ * it does not submit anything.
  *
  * @command  vendor/bin/pest tests/Unit/SubmissionReadinessTest.php
  */
@@ -12,7 +13,7 @@ declare(strict_types=1);
 /**
  * The parsed `composer.json`.
  *
- * @return array<string, mixed>
+ * @return array<string, mixed> The manifest's top-level fields by name.
  */
 function submissionManifest(): array
 {
@@ -21,30 +22,37 @@ function submissionManifest(): array
 }
 
 it('declares every top-level field a public package needs', function (string $field): void {
+    // Expect the field present and filled in
     expect(submissionManifest())->toHaveKey($field);
     expect(submissionManifest()[$field])->not->toBeEmpty();
 })->with(['name', 'description', 'keywords', 'type', 'license', 'authors', 'support', 'autoload']);
 
 it('is a statamic-addon under the uams-web vendor', function (): void {
+    // Read the manifest
     $manifest = submissionManifest();
 
+    // Expect the add-on type and the uams-web vendor
     expect($manifest['type'])->toBe('statamic-addon')
         ->and($manifest['name'])->toStartWith('uams-web/');
 });
 
 it('names and describes itself for the Control Panel', function (): void {
+    // Read the manifest's extra section
     /** @var array{statamic?: array{name?: string, description?: string}, laravel?: array{providers?: list<string>}} $extra */
     $extra = submissionManifest()['extra'];
 
+    // Expect a name, a description and a discovered provider
     expect($extra['statamic']['name'] ?? '')->not->toBeEmpty()
         ->and($extra['statamic']['description'] ?? '')->not->toBeEmpty()
         ->and($extra['laravel']['providers'] ?? [])->not->toBeEmpty();
 });
 
 it('declares no editions, as decided in #17', function (): void {
+    // Read the manifest's extra section
     /** @var array{statamic: array<string, mixed>} $extra */
     $extra = submissionManifest()['extra'];
 
+    // Expect no editions declared for Statamic
     expect($extra['statamic'])->not->toHaveKey('editions');
 });
 

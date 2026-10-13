@@ -14,13 +14,14 @@ use Statamic\Http\Controllers\CP\Fields\BlueprintController;
 use UAMSWeb\MultisiteForms\Access\RefusedFormEditors;
 
 /**
- * Keeps forms the user may not open out of the blueprints index and the command palette (#133).
+ * Keeps forms the user may not open out of the blueprints index and the
+ * command palette (#133).
  *
- * Core's blueprints index lists every form's blueprint, with its title and a link
- * to its fields editor, in the page's `forms` prop (`BlueprintController::forms()`),
- * and the command palette lists every form's blueprint by name with the same link
- * (`Palette::buildFields()`). A user allowed there would see the forms assigned to
- * sites they cannot access.
+ * Core's blueprints index lists every form's blueprint, with its title and a
+ * link to its fields editor, in the page's `forms` prop
+ * (`BlueprintController::forms()`), and the command palette lists every form's
+ * blueprint by name with the same link (`Palette::buildFields()`). A user
+ * allowed there would see the forms assigned to sites they cannot access.
  *
  * As with the editor's breadcrumb (#124), this listens for the response being
  * prepared, when the index is still an Inertia response and the palette still the
@@ -52,19 +53,25 @@ final class BlueprintListings
 
     /**
      * Filter the blueprints index's forms, or the command palette's items.
+     *
+     * @param  PreparingResponse  $event  The response being prepared.
      */
     public static function preparing(PreparingResponse $event): void
     {
+        // Find the route name and the response being prepared
         $request = $event->request;
         $route = $request instanceof Request ? $request->route() : null;
         $name = $route instanceof Route ? $route->getName() : null;
         $response = $event->response;
 
+        // Check whether this is the blueprints index or the command palette
         if ($name === self::INDEX && $response instanceof InertiaResponse) {
+            // Replace the index's forms with those the user may open
             /** @var array<array-key, mixed> $forms core's `forms()` returns a list, untyped */
             $forms = app(BlueprintController::class)->forms();
             $response->with(self::FORMS, self::kept($forms, 'edit_url'));
         } elseif ($name === self::PALETTE && $response instanceof Collection) {
+            // Filter the palette's items, then refill the collection in place
             /** @var Collection<array-key, mixed> $response */
             $kept = self::kept($response->all(), 'url');
             $response->splice(0);
@@ -73,15 +80,19 @@ final class BlueprintListings
     }
 
     /**
-     * The items, without those linking to a fields editor the user may not open.
+     * The items, without those linking to a fields editor the user may not
+     * open.
      *
-     * @param  array<array-key, mixed>  $items
-     * @return list<mixed>
+     * @param  array<array-key, mixed>  $items  The listed items to filter.
+     * @param  string  $key  The item key that holds the link to check.
+     * @return list<mixed> The items the user may open, reindexed.
      */
     public static function kept(array $items, string $key): array
     {
+        // Find the fields editor paths the user may not open
         $refused = RefusedFormEditors::paths();
 
+        // Keep only the items whose link is not refused
         return array_values(array_filter($items, static fn (mixed $item): bool => ! RefusedFormEditors::isRefused($item, $refused, $key)));
     }
 }

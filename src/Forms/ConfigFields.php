@@ -17,9 +17,9 @@ use UAMSWeb\MultisiteForms\Sites\ConfiguredSites;
  * data, which `Form::save()` writes to the form file. An empty selection
  * processes to null, which core leaves out of the file, so clearing the field
  * makes the form global again. A non-super user may save only a selection they
- * could still edit the form under (#118, {@see AccessibleSites}).
+ * could still edit the form under (#118, `AccessibleSites`).
  *
- * The section's second field edits `site_overrides`, the rows {@see Overrides}
+ * The section's second field edits `site_overrides`, the rows `Overrides`
  * applies: a site, and a title, a store setting and email configs for it. Each
  * value can be left empty to keep the form's own. Store is a clearable choice
  * rather than core's toggle, because a toggle saves `false` when left alone and
@@ -41,7 +41,7 @@ final class ConfigFields
     /**
      * The section's fields, keyed by handle, in the shape core's form settings use.
      *
-     * @return array<string, array<string, mixed>>
+     * @return array<string, array<string, mixed>> The sites and overrides fields.
      */
     public static function fields(): array
     {
@@ -99,10 +99,11 @@ final class ConfigFields
      * add-on cannot reuse, so they are mirrored here; a test compares them with
      * core's on every run.
      *
-     * @return list<array{handle: string, field: array<string, mixed>}>
+     * @return list<array{handle: string, field: array<string, mixed>}> The email config columns, in core's order.
      */
     public static function emailFields(): array
     {
+        // Build the text, template and toggle field shapes core's columns use
         $text = fn (string $display, string $message, array $extra = []): array => [
             'type' => 'text',
             'display' => __($display),
@@ -122,6 +123,7 @@ final class ConfigFields
             'instructions' => __('statamic::messages.'.$message),
         ];
 
+        // Read the configured mailers, offered as the mailer column's options
         /** @var array<string, mixed> $mailers */
         $mailers = config('mail.mailers', []);
 
@@ -129,6 +131,7 @@ final class ConfigFields
         $sender = config('mail.from.address');
         $sender = is_string($sender) ? $sender : '';
 
+        // List the columns in core's order
         return [
             ['handle' => 'to', 'field' => $text('Recipient(s)', 'form_configure_email_to_instructions', ['validate' => ['required']])],
             ['handle' => 'cc', 'field' => $text('CC Recipient(s)', 'form_configure_email_cc_instructions')],

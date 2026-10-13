@@ -29,23 +29,35 @@ final class ResolveSubmittedForm
     /** The name of core's form submit route. */
     public const string ROUTE = 'statamic.forms.submit';
 
+    /**
+     * Create the middleware with the services it resolves forms through.
+     *
+     * @param  FormResolver  $resolver  Resolves a form to its view for a site.
+     * @param  RequestSite  $site  Names the site a submission is made from.
+     */
     public function __construct(
         private readonly FormResolver $resolver,
         private readonly RequestSite $site,
     ) {}
 
     /**
-     * @param  Closure(Request): Response  $next
+     * Swap the submit route's form for its site view, or refuse it with a 404.
+     *
+     * @param  Request  $request  The incoming request.
+     * @param  Closure(Request): Response  $next  The rest of the pipeline.
+     * @return Response The response from the rest of the pipeline.
      *
      * @throws NotFoundHttpException When the form is not assigned to the submit site.
      */
     public function handle(Request $request, Closure $next): Response
     {
+        // Pass through every route other than core's form submit route
         $route = $request->route();
         if (! $route instanceof Route || $route->getName() !== self::ROUTE) {
             return $next($request);
         }
 
+        // Check whether core has bound the route's form
         $form = $route->parameter('form');
         if (! $form instanceof Form) {
             // Core binds the form before this runs, so an unbound value means the
@@ -57,11 +69,13 @@ final class ResolveSubmittedForm
             return $next($request);
         }
 
+        // Resolve the form for the submit site, refusing one not assigned to it
         $view = $this->resolver->resolve($form, $this->site->forSubmission());
         if (! $view instanceof SiteForm) {
             throw new NotFoundHttpException("Form [{$route->originalParameter('form')}] not found.");
         }
 
+        // Hand core's controller the site's read-only view to submit
         $route->setParameter('form', $view);
 
         return $next($request);

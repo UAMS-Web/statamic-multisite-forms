@@ -36,48 +36,61 @@ const ATTRIBUTE_FORMS = [
 ];
 
 beforeEach(function (): void {
+    // Configure two sites
     useTwoSites();
 
     // Every info line logged during the test, as [message, context]
     $this->logged = [];
     Event::listen(MessageLogged::class, function (MessageLogged $event): void {
+        // Record the line when it is logged at info
         if ($event->level === 'info') {
             $this->logged[] = [$event->message, $event->context];
         }
     });
 
+    // Use a temporary forms directory
     $this->directory = useTemporaryFormsDirectory();
 
+    // Find the submissions store, failing when the Stache has none
     $store = Stache::store('form-submissions');
     if (! $store instanceof Store) {
         throw new RuntimeException('The Stache has no form submissions store.');
     }
 
+    // Store submissions beside the temporary forms
     $store->directory($this->directory.'/_submissions');
 
+    // Store each test form with its sites and its submissions
     foreach (ATTRIBUTE_FORMS as $handle => $sites) {
+        // Make the form, failing if the repository returns another class
         $form = FormFacade::make($handle);
         if (! $form instanceof Form) {
             throw new RuntimeException('The forms repository did not make a form.');
         }
 
+        // Title the form and assign its sites unless it is global
         $form->title(ucfirst($handle));
         if ($sites !== []) {
             $form->set('sites', $sites);
         }
 
+        // Save the form to the temporary directory
         $form->save();
 
         // One submission per site and two with no site, named after the site. Core's
         // default id has 0.1ms resolution, so two saved that close would share one.
         foreach (['en', 'es', null, null] as $index => $site) {
+            // Make the submission with a fixed id, named after its site
             $submission = $form->makeSubmission();
             $submission->id("{$handle}-{$index}");
             $submission->set('name', ($site ?? 'none').$index);
+
+            // Attribute it to its site unless it has none
             if ($site !== null) {
                 $submission->set('_site', $site);
             }
 
+            // Save the submission
             $submission->save();
         }
     }
@@ -88,24 +101,32 @@ afterEach(function (): void {
 });
 
 /**
- * The attribute command, run with the given arguments once its expectations are set.
+ * The attribute command, run with the given arguments once its expectations are
+ * set.
  *
- * @param  array<string, mixed>  $arguments
+ * @param  TestCase  $case  The running test.
+ * @param  array<string, mixed>  $arguments  The command's arguments and options.
+ * @return PendingCommand The command, not yet run.
+ *
+ * @throws RuntimeException When the command ran before it could be returned.
  */
 function attribute(TestCase $case, array $arguments): PendingCommand
 {
+    // Prepare the command, failing if it has already run
     $command = $case->artisan('multisite-forms:attribute', $arguments);
     if (! $command instanceof PendingCommand) {
         throw new RuntimeException('The command ran before its expectations were set.');
     }
 
+    // Return it for the caller to set expectations on
     return $command;
 }
 
 /**
  * A form's stored submissions.
  *
- * @return iterable<Submission>
+ * @param  string  $form  The handle of the form.
+ * @return iterable<Submission> The form's stored submissions.
  */
 function storedSubmissionsOf(string $form): iterable
 {
@@ -115,22 +136,30 @@ function storedSubmissionsOf(string $form): iterable
 }
 
 /**
- * Each submission of a form by name, with the site it records, or null for none.
+ * Each submission of a form by name, with the site it records, or null for
+ * none.
  *
- * @return array<string, mixed>
+ * @param  string  $form  The handle of the form.
+ * @return array<string, mixed> Each recorded site, keyed and sorted by name.
+ *
+ * @throws RuntimeException When a submission has no name.
  */
 function recordedSites(string $form): array
 {
+    // Map each submission's name to the site it records
     $sites = [];
     foreach (storedSubmissionsOf($form) as $submission) {
+        // Read the name, failing when the submission has none
         $name = $submission->get('name');
         if (! is_string($name)) {
             throw new RuntimeException('A submission has no name.');
         }
 
+        // Record the submission's site under its name
         $sites[$name] = $submission->get('_site');
     }
 
+    // Sort by name so the order is stable
     ksort($sites);
 
     return $sites;
@@ -139,15 +168,18 @@ function recordedSites(string $form): array
 /**
  * Every stored file under a directory, by path, with a hash of its contents.
  *
- * @return array<string, string>
+ * @param  string  $directory  The directory to read.
+ * @return array<string, string> The MD5 hash of each file, keyed by path.
  */
 function storedFiles(string $directory): array
 {
+    // Hash each file under the directory
     $files = [];
     foreach (File::allFiles($directory) as $file) {
         $files[$file->getPathname()] = (string) md5_file($file->getPathname());
     }
 
+    // Sort by path so the order is stable
     ksort($files);
 
     return $files;
@@ -156,18 +188,22 @@ function storedFiles(string $directory): array
 /**
  * The ids of a form's submissions that record no site.
  *
- * @return list<string>
+ * @param  string  $form  The handle of the form.
+ * @return list<string> The ids, sorted.
  */
 function unattributedIds(string $form): array
 {
+    // Collect the id of each submission that records no site
     $ids = [];
     foreach (storedSubmissionsOf($form) as $submission) {
+        // Keep the id when the submission has one and records no site
         $id = $submission->id();
         if ($submission->get('_site') === null && is_string($id)) {
             $ids[] = $id;
         }
     }
 
+    // Sort the ids so the order is stable
     sort($ids);
 
     return $ids;
@@ -177,21 +213,29 @@ function unattributedIds(string $form): array
  * Store a submission of a form whose file holds an empty `_site`, as a direct
  * import writes it: core drops an empty `_site` whenever it saves one (#130).
  *
+ * @param  string  $directory  The temporary forms directory.
+ * @param  string  $form  The handle of the form.
+ * @param  string  $id  The id to give the submission.
  * @return string The submission file's path
+ *
+ * @throws RuntimeException When the form is missing or the file not stored.
  */
 function saveWithEmptySite(string $directory, string $form, string $id): string
 {
+    // Find the form, failing when it is missing
     $handle = FormFacade::find($form);
     if (! $handle instanceof Form) {
         throw new RuntimeException("There is no form [{$form}].");
     }
 
+    // Save a submission with a placeholder site
     $submission = $handle->makeSubmission();
     $submission->id($id);
     $submission->set('name', 'blank');
     $submission->set('_site', 'placeholder');
     $submission->save();
 
+    // Find the submission's file among the stored ones
     $path = null;
     foreach (File::allFiles($directory.'/_submissions') as $file) {
         if ($file->getFilename() === "{$id}.yaml") {
@@ -199,10 +243,12 @@ function saveWithEmptySite(string $directory, string $form, string $id): string
         }
     }
 
+    // Fail when the file was not stored
     if ($path === null) {
         throw new RuntimeException("The submission [{$id}] was not stored.");
     }
 
+    // Empty the site in the file directly and drop the cached copy
     $data = YAML::parse(File::get($path));
     $data['_site'] = '';
     File::put($path, YAML::dump($data));
@@ -212,105 +258,133 @@ function saveWithEmptySite(string $directory, string $form, string $id): string
 }
 
 it('records the site on the submissions that have none, and leaves the rest', function (): void {
+    // Expect the command to attribute the two unattributed submissions
     attribute($this, ['form' => 'shared', 'site' => 'es'])
         ->expectsOutputToContain('Attributed 2 submissions of [shared] to [es].')
         ->assertSuccessful();
 
+    // Expect only those two now recording es
     expect(recordedSites('shared'))->toBe(['en0' => 'en', 'es1' => 'es', 'none2' => 'es', 'none3' => 'es']);
 });
 
 it('attributes a submission whose file holds an empty site, and leaves no empty site behind', function (): void {
+    // Store a submission whose file holds an empty site, and confirm it does
     $path = saveWithEmptySite($this->directory, 'shared', 'shared-blank');
     expect(YAML::parse(File::get($path)))->toHaveKey('_site', '');
 
+    // Expect the command to attribute it with the others
     attribute($this, ['form' => 'shared', 'site' => 'es'])
         ->expectsOutputToContain('Attributed shared-blank')
         ->expectsOutputToContain('Attributed 3 submissions of [shared] to [es].')
         ->assertSuccessful();
 
+    // Drop the cached copies so the files are read again
     Stache::clear();
 
+    // Expect the file and every unattributed submission to record es
     expect(YAML::parse(File::get($path)))->toHaveKey('_site', 'es')
         ->and(recordedSites('shared'))->toBe(['blank' => 'es', 'en0' => 'en', 'es1' => 'es', 'none2' => 'es', 'none3' => 'es']);
 });
 
 it('counts a submission with an empty site in a dry run, and leaves its file alone', function (): void {
+    // Store a submission with an empty site and keep its file's contents
     $path = saveWithEmptySite($this->directory, 'shared', 'shared-blank');
     $before = File::get($path);
 
+    // Expect a dry run to count it with the others
     attribute($this, ['form' => 'shared', 'site' => 'es', '--dry-run' => true])
         ->expectsOutputToContain('Would attribute shared-blank')
         ->expectsOutputToContain('Would attribute 3 submissions of [shared] to [es].')
         ->assertSuccessful();
 
+    // Expect its file unchanged
     expect(File::get($path))->toBe($before);
 });
 
 it("leaves another form's submission with an empty site alone", function (): void {
+    // Store a submission with an empty site on the en-only form
     $path = saveWithEmptySite($this->directory, 'english', 'english-blank');
 
+    // Expect the command on the shared form to attribute only its own two
     attribute($this, ['form' => 'shared', 'site' => 'en'])
         ->expectsOutputToContain('Attributed 2 submissions of [shared] to [en].')
         ->assertSuccessful();
 
+    // Expect the en-only form's file to keep its empty site
     expect(YAML::parse(File::get($path)))->toHaveKey('_site', '');
 });
 
 it("leaves other forms' submissions alone", function (): void {
+    // Attribute the shared form's submissions to en
     attribute($this, ['form' => 'shared', 'site' => 'en'])->assertSuccessful();
 
+    // Expect the other forms' unattributed submissions untouched
     expect(recordedSites('english'))->toBe(['en0' => 'en', 'es1' => 'es', 'none2' => null, 'none3' => null])
         ->and(recordedSites('everywhere'))->toBe(['en0' => 'en', 'es1' => 'es', 'none2' => null, 'none3' => null]);
 });
 
 it('attributes the submissions of a form with no sites to any site', function (): void {
+    // Attribute the global form's submissions to es
     attribute($this, ['form' => 'everywhere', 'site' => 'es'])->assertSuccessful();
 
+    // Expect its unattributed submissions now recording es
     expect(recordedSites('everywhere'))->toBe(['en0' => 'en', 'es1' => 'es', 'none2' => 'es', 'none3' => 'es']);
 });
 
 it('stores the site so a later read finds it', function (): void {
+    // Attribute the shared form's submissions to en
     attribute($this, ['form' => 'shared', 'site' => 'en'])->assertSuccessful();
 
+    // Drop the cached copies so the files are read again
     Stache::clear();
 
+    // Expect the stored files to record en
     expect(recordedSites('shared'))->toBe(['en0' => 'en', 'es1' => 'es', 'none2' => 'en', 'none3' => 'en']);
 });
 
 it('names each submission it changes, and logs each with its id', function (): void {
+    // Prepare the command, expecting it to name each unattributed submission
     $ids = unattributedIds('shared');
     $command = attribute($this, ['form' => 'shared', 'site' => 'es']);
     foreach ($ids as $id) {
         $command->expectsOutputToContain("Attributed {$id}");
     }
 
+    // Run the command, expecting it to succeed
     $command->assertSuccessful();
     $command->run();
 
+    // Build the info line expected for each submission
     $expected = array_map(static fn (string $id): array => ['Multisite Forms attributed a submission to a site.', [
         'form' => 'shared',
         'submission' => $id,
         'site' => 'es',
     ]], $ids);
 
+    // Expect one logged line per changed submission
     expect($ids)->toHaveCount(2)
         ->and($this->logged)->toEqualCanonicalizing($expected);
 });
 
 it('reports what a dry run would change, and writes and logs nothing', function (): void {
+    // Note the unattributed ids and the stored files before the run
     $ids = unattributedIds('shared');
     $before = storedFiles($this->directory);
 
+    // Prepare a dry run, expecting it to name each unattributed submission
     $command = attribute($this, ['form' => 'shared', 'site' => 'es', '--dry-run' => true]);
     foreach ($ids as $id) {
         $command->expectsOutputToContain("Would attribute {$id}");
     }
 
+    // Run it, expecting the summary and success
     $command->expectsOutputToContain('Would attribute 2 submissions of [shared] to [es].')->assertSuccessful();
     $command->run();
 
+    // Drop the cached copies so the files are read again
     Stache::clear();
 
+    // Expect no file changed, no site recorded and nothing logged
     expect(storedFiles($this->directory))->toBe($before)
         ->and($before)->not->toBe([])
         ->and(recordedSites('shared'))->toBe(['en0' => 'en', 'es1' => 'es', 'none2' => null, 'none3' => null])
@@ -318,10 +392,13 @@ it('reports what a dry run would change, and writes and logs nothing', function 
 });
 
 it('saves quietly, so no submission event fires', function (): void {
+    // Fake the submission events
     Event::fake([SubmissionCreated::class, SubmissionSaving::class, SubmissionSaved::class]);
 
+    // Attribute the shared form's submissions to es
     attribute($this, ['form' => 'shared', 'site' => 'es'])->assertSuccessful();
 
+    // Expect the site recorded and no submission event dispatched
     expect(recordedSites('shared'))->toHaveKey('none2', 'es');
     Event::assertNotDispatched(SubmissionCreated::class);
     Event::assertNotDispatched(SubmissionSaving::class);
@@ -329,29 +406,36 @@ it('saves quietly, so no submission event fires', function (): void {
 });
 
 it('counts one submission, and none', function (): void {
+    // Attribute every unattributed submission of the shared form
     attribute($this, ['form' => 'shared', 'site' => 'es'])->assertSuccessful();
 
+    // Expect a second run to count none
     attribute($this, ['form' => 'shared', 'site' => 'es'])
         ->expectsOutputToContain('Attributed 0 submissions of [shared] to [es].')
         ->assertSuccessful();
 
+    // Save one new unattributed submission
     $form = FormFacade::find('shared');
     $submission = $form->makeSubmission();
     $submission->set('name', 'late');
     $submission->save();
 
+    // Expect the next run to count it in the singular
     attribute($this, ['form' => 'shared', 'site' => 'en'])
         ->expectsOutputToContain('Attributed 1 submission of [shared] to [en].')
         ->assertSuccessful();
 });
 
 it('refuses an unknown form, an unknown site, or a site the form is not assigned to, and changes nothing', function (string $form, string $site, string $message): void {
+    // Note the stored files before the run
     $before = storedFiles($this->directory);
 
+    // Expect the command to fail with the case's message
     attribute($this, ['form' => $form, 'site' => $site])
         ->expectsOutputToContain($message)
         ->assertFailed();
 
+    // Expect no stored file changed
     expect(storedFiles($this->directory))->toBe($before);
 })->with([
     'an unknown form' => ['missing', 'en', 'There is no form [missing].'],

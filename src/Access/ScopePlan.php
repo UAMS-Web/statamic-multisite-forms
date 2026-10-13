@@ -12,6 +12,8 @@ namespace UAMSWeb\MultisiteForms\Access;
 final readonly class ScopePlan
 {
     /**
+     * Hold the plan worked out for one user.
+     *
      * @param  mixed  $user  the user's auth identifier
      * @param  list<string>  $sites  the sites the user can access
      * @param  bool  $all  whether the user covers every form

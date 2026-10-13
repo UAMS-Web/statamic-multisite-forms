@@ -21,11 +21,17 @@ use Statamic\Sites\Site as SiteObject;
 final class ConfiguredSites implements ValidationRule
 {
     /**
-     * @param  Closure(string): mixed  $fail
+     * Fail the attribute when any handle in it names no configured site.
+     *
+     * @param  string  $attribute  The name of the field being validated.
+     * @param  mixed  $value  The submitted sites selection.
+     * @param  Closure(string): mixed  $fail  Reports the failure message.
      */
     public function validate(string $attribute, mixed $value, Closure $fail): void
     {
+        // Check each handle in the selection, read as a list
         foreach ((array) $value as $handle) {
+            // Fail on the first value that is not a configured site's handle
             if (! is_string($handle) || ! Site::get($handle) instanceof SiteObject) {
                 $fail('The :attribute field must list only the sites this install defines.');
 

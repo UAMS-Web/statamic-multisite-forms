@@ -28,21 +28,28 @@ const API_FORMS = [
 ];
 
 beforeEach(function (): void {
+    // Configure two sites and a temporary forms directory
     useTwoSites();
     useTemporaryFormsDirectory();
+
+    // Expose forms through the REST and GraphQL APIs
     config(['statamic.api.resources.forms' => true, 'statamic.graphql.resources.forms' => true]);
 
+    // Store each test form with the sites it lists
     foreach (API_FORMS as $handle => $sites) {
+        // Make the form, failing if the repository returns another class
         $form = FormFacade::make($handle);
         if (! $form instanceof Form) {
             throw new RuntimeException('The forms repository did not make a form.');
         }
 
+        // Title the form and assign its sites unless it is global
         $form->title(ucfirst($handle));
         if ($sites !== []) {
             $form->set('sites', $sites);
         }
 
+        // Save the form to the temporary directory
         $form->save();
     }
 });
@@ -54,16 +61,22 @@ afterEach(function (): void {
 /**
  * The handles in a list of forms from either API, sorted.
  *
- * @return list<string>
+ * @param  mixed  $forms  The decoded list of forms from a response.
+ * @return list<string> The handle of each listed form, sorted.
+ *
+ * @throws RuntimeException When there is no list, or a form has no handle.
  */
 function listedHandles(mixed $forms): array
 {
+    // Fail when the response holds no list
     if (! is_array($forms)) {
         throw new RuntimeException('The response holds no list of forms.');
     }
 
+    // Collect each listed form's handle
     $handles = [];
     foreach ($forms as $form) {
+        // Read the handle, failing when the form has none
         $handle = is_array($form) ? ($form['handle'] ?? null) : null;
         if (! is_string($handle)) {
             throw new RuntimeException('A listed form has no handle.');
@@ -72,6 +85,7 @@ function listedHandles(mixed $forms): array
         $handles[] = $handle;
     }
 
+    // Sort the handles so the order is stable
     sort($handles);
 
     return $handles;
@@ -80,8 +94,9 @@ function listedHandles(mixed $forms): array
 /**
  * The REST forms listing, with the given query string.
  *
- * @param  array<string, mixed>  $query
- * @return TestResponse<Response>
+ * @param  TestCase  $case  The running test.
+ * @param  array<string, mixed>  $query  The query string's parameters.
+ * @return TestResponse<Response> The listing response.
  */
 function restForms(TestCase $case, array $query = []): TestResponse
 {
@@ -91,7 +106,9 @@ function restForms(TestCase $case, array $query = []): TestResponse
 /**
  * The GraphQL forms query, with the given arguments written as GraphQL.
  *
- * @return TestResponse<Response>
+ * @param  TestCase  $case  The running test.
+ * @param  string  $arguments  The query's arguments, parentheses included.
+ * @return TestResponse<Response> The query response.
  */
 function graphqlForms(TestCase $case, string $arguments = ''): TestResponse
 {
@@ -120,13 +137,16 @@ it('refuses a site filter that names no configured site', function (mixed $site)
 ]);
 
 it('filters only the forms the API exposes', function (): void {
+    // Expose only two forms through the REST API
     config(['statamic.api.resources.forms' => ['english', 'spanish']]);
 
+    // Expect only exposed forms listed, with or without the filter
     expect(listedHandles(restForms($this)->assertOk()->json('data')))->toBe(['english', 'spanish'])
         ->and(listedHandles(restForms($this, ['site' => 'en'])->assertOk()->json('data')))->toBe(['english']);
 });
 
 it('leaves the single form endpoint and a disabled API as core has them', function (): void {
+    // Expect the single form endpoint to ignore the site filter
     $this->getJson('/api/forms/spanish?site=en')->assertOk()->assertJsonPath('data.handle', 'spanish');
 
     // An unknown site too, so a disabled API answers before the filter is read
@@ -150,8 +170,10 @@ it('lists the forms assigned to a site from GraphQL, and the forms with no sites
 ]);
 
 it('answers a GraphQL site argument that names no configured site with a validation error', function (string $site): void {
+    // Query the forms with the unknown site
     $response = graphqlForms($this, "(site: \"{$site}\")")->assertOk();
 
+    // Expect a validation error on site and no forms
     expect($response->json('errors.0.message'))->toBe('validation')
         ->and($response->json('errors.0.extensions.validation.site'))->toBeArray()->not->toBeEmpty()
         ->and($response->json('data.forms'))->toBeNull();
@@ -161,8 +183,10 @@ it('answers a GraphQL site argument that names no configured site with a validat
 ]);
 
 it('reads the GraphQL site argument from a variable', function (): void {
+    // Write a query that takes the site from a variable
     $query = 'query ($site: String) { forms(site: $site) { handle } }';
 
+    // Expect no variable, a known site and an unknown one each answered
     expect(listedHandles($this->postJson('/graphql', ['query' => $query])->assertOk()->json('data.forms')))
         ->toBe(['english', 'everywhere', 'shared', 'spanish'])
         ->and(listedHandles($this->postJson('/graphql', ['query' => $query, 'variables' => ['site' => 'es']])->assertOk()->json('data.forms')))
@@ -172,8 +196,10 @@ it('reads the GraphQL site argument from a variable', function (): void {
 });
 
 it('filters only the forms GraphQL exposes', function (): void {
+    // Expose only two forms through GraphQL
     config(['statamic.graphql.resources.forms' => ['english', 'spanish']]);
 
+    // Expect only exposed forms listed, with or without the filter
     expect(listedHandles(graphqlForms($this)->assertOk()->json('data.forms')))->toBe(['english', 'spanish'])
         ->and(listedHandles(graphqlForms($this, '(site: "es")')->assertOk()->json('data.forms')))->toBe(['spanish']);
 });

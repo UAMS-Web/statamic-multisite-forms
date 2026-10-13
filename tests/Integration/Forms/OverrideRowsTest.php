@@ -18,12 +18,16 @@ beforeEach(function (): void {
 /**
  * The messages the rule fails with for the given rows and `sites` value.
  *
- * @return list<string>
+ * @param  mixed  $rows  The `site_overrides` value to validate.
+ * @param  mixed  $sites  The form's `sites` value.
+ * @return list<string> Each failure message, in order.
  */
 function overrideRowFailures(mixed $rows, mixed $sites): array
 {
+    // Start with no failures
     $failures = [];
 
+    // Validate the rows against the sites, collecting each failure
     (new OverrideRows)
         ->setData(['sites' => $sites])
         ->validate('site_overrides', $rows, function (string $message) use (&$failures): void {
@@ -85,11 +89,13 @@ it('skips a row that names no site and still checks the rows after it', function
 ]);
 
 it('names a site by its handle when its configured name is empty or not a string', function (mixed $name): void {
+    // Configure the Spanish site with the given name
     Site::setSites([
         'en' => ['name' => 'English', 'url' => 'http://localhost/', 'locale' => 'en_US'],
         'es' => ['name' => $name, 'url' => 'http://localhost/es/', 'locale' => 'es_ES'],
     ]);
 
+    // Expect the failure to name the site by its handle
     expect(overrideRowFailures([['site' => 'es']], ['en']))
         ->toBe(["es has an override row but is not one of this form's sites."]);
 })->with([

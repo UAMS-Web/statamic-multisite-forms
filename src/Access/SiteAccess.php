@@ -22,9 +22,14 @@ final class SiteAccess
 {
     /**
      * Whether the user can access the site a handle names.
+     *
+     * @param  User  $user  The Control Panel user to check.
+     * @param  string  $handle  The handle of the site to check.
+     * @return bool True when the site exists and the user may view it.
      */
     public static function canAccess(User $user, string $handle): bool
     {
+        // Find the configured site the handle names
         $site = Site::get($handle);
 
         // Without the check, `view` on null finds no policy and answers false even for a
@@ -37,7 +42,9 @@ final class SiteAccess
     /**
      * Whether the user can access at least one of the sites.
      *
-     * @param  list<string>  $handles
+     * @param  User  $user  The Control Panel user to check.
+     * @param  list<string>  $handles  The handles of the sites to check.
+     * @return bool True when at least one of the sites is accessible.
      */
     public static function canAccessAny(User $user, array $handles): bool
     {
@@ -47,7 +54,9 @@ final class SiteAccess
     /**
      * Whether the user can access every one of the sites.
      *
-     * @param  list<string>  $handles
+     * @param  User  $user  The Control Panel user to check.
+     * @param  list<string>  $handles  The handles of the sites to check.
+     * @return bool True when every site is accessible, including for no sites.
      */
     public static function canAccessAll(User $user, array $handles): bool
     {
@@ -57,7 +66,8 @@ final class SiteAccess
     /**
      * The handles of the configured sites the user can access, in configured order.
      *
-     * @return list<string>
+     * @param  User  $user  The Control Panel user to check.
+     * @return list<string> The accessible site handles.
      */
     public static function accessible(User $user): array
     {
@@ -67,7 +77,7 @@ final class SiteAccess
     /**
      * The handles of every configured site.
      *
-     * @return list<string>
+     * @return list<string> Every configured site handle, in configured order.
      */
     public static function allHandles(): array
     {

@@ -31,6 +31,8 @@ final class FormsController extends CoreFormsController
 {
     /**
      * Use this controller wherever core's REST forms controller is built.
+     *
+     * @param  Application  $app  The container to bind the controller in.
      */
     public static function register(Application $app): void
     {
@@ -39,21 +41,30 @@ final class FormsController extends CoreFormsController
 
     /**
      * The forms the API allows, narrowed to a site when the request names one.
+     *
+     * @return AnonymousResourceCollection The forms as API resources.
+     *
+     * @throws ApiValidationException When the `site` parameter names no
+     *                                configured site.
      */
     #[\Override]
     public function index(): AnonymousResourceCollection
     {
+        // Refuse the request when the forms API is disabled
         $this->abortIfDisabled();
 
+        // Find the forms the API allows
         /** @var Collection<array-key, Form> $forms */
         $forms = $this->filterAllowedResources(FormFacade::all());
 
+        // Narrow the forms to the requested site, when one is named
         $site = self::requestedSiteFilter();
         if ($site instanceof SiteObject) {
             $forms = $forms->filter(static fn (Form $form): bool => Assignment::covers($form, $site))->values();
         }
 
-        // Core resolves the resource from the container too, so a host's own binding still applies
+        // Core resolves the resource from the container too, so a host's own
+        // binding still applies
         /** @var FormResource $resource */
         $resource = app(FormResource::class);
 
@@ -63,14 +74,19 @@ final class FormsController extends CoreFormsController
     /**
      * The site the request filters by, or null when it names none.
      *
-     * @throws ApiValidationException When the `site` parameter names no configured site.
+     * @return SiteObject|null The requested site, or null when none is named.
+     *
+     * @throws ApiValidationException When the `site` parameter names no
+     *                                configured site.
      */
     private static function requestedSiteFilter(): ?SiteObject
     {
+        // Return no filter when the request has no `site` parameter
         if (! request()->has('site')) {
             return null;
         }
 
+        // Find the configured site the parameter names, refusing an unknown one
         $handle = request()->input('site');
         $site = is_string($handle) ? Site::get($handle) : null;
         if (! $site instanceof SiteObject) {

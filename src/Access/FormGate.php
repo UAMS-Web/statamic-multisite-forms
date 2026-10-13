@@ -48,26 +48,34 @@ final class FormGate
     /**
      * False to deny the ability, or null to leave it to core's policies.
      *
-     * @param  array<array-key, mixed>  $arguments
+     * @param  mixed  $user  The user the gate is asked about, in any form core accepts.
+     * @param  string  $ability  The ability being checked, such as `edit`.
+     * @param  array<array-key, mixed>  $arguments  The gate's arguments; the first is the subject.
+     * @return bool|null False to deny, or null to defer to core's policies.
      */
     public static function decide(mixed $user, string $ability, array $arguments): ?bool
     {
+        // Leave any ability not about a form or a submission to core
         $form = self::formOf($arguments[0] ?? null);
         if (! $form instanceof Form) {
             return null;
         }
 
+        // Leave a missing user or a super user to core
         $user = User::fromUser($user);
         if ($user === null || $user->isSuper()) {
             return null;
         }
 
+        // Read the sites the form is assigned to
         $sites = Assignment::sites($form);
 
+        // Deny a form listing sites when the user can access none of them
         if ($sites !== [] && ! SiteAccess::canAccessAny($user, $sites)) {
             return false;
         }
 
+        // Deny a change to the form unless the user covers every one of its sites
         $changing = $form === $arguments[0] && in_array($ability, self::CHANGING, true);
         if ($changing && ! SiteAccess::canAccessAll($user, $sites === [] ? SiteAccess::allHandles() : $sites)) {
             return false;
@@ -78,13 +86,18 @@ final class FormGate
 
     /**
      * The form an ability is asked about: the subject itself, or a submission's form.
+     *
+     * @param  mixed  $subject  The gate's first argument.
+     * @return Form|null The form, or null when the subject is neither kind.
      */
     private static function formOf(mixed $subject): ?Form
     {
+        // Swap a submission for the form it belongs to
         if ($subject instanceof Submission) {
             $subject = $subject->form();
         }
 
+        // Return the subject only when it is a form
         return $subject instanceof Form ? $subject : null;
     }
 }
