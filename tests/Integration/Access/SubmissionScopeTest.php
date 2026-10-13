@@ -462,6 +462,8 @@ it('treats a path under the Control Panel route as a Control Panel request, howe
     'a nested route' => ['/admin/cp', '/admin/cp/forms', true],
     'a path that only starts with the route' => ['/cp', '/cpanel/forms', false],
     'a front-end path' => ['/cp', '/contact', false],
+    'an API path' => ['/cp', '/api/forms/shared', false],
+    'an encoded Control Panel path' => ['/cp', '/%63p/forms', true],
     'the site root' => ['cp', '/', false],
     'an empty route, at the root' => ['', '/forms', true],
 ]);
@@ -484,3 +486,15 @@ it('scopes Control Panel reads under a route configured with a leading slash, wh
     expect(Statamic::isCpRoute())->toBeFalse()
         ->and(submissionsOf(['shared'])->count())->toBe(1);
 });
+
+it('scopes a Control Panel listing reached through a URL-encoded path', function (string $path): void {
+    $this->actingAs(scopeUser('es-only', ['es']));
+
+    /** @var list<array{id: string}> $rows */
+    $rows = $this->getJson($path)->assertOk()->json('data');
+
+    expect(namesOf($rows))->toBe(['es']);
+})->with([
+    'an encoded letter' => ['/%63p/forms/shared/submissions'],
+    'an encoded slash' => ['/cp%2Fforms/shared/submissions'],
+]);

@@ -105,8 +105,16 @@ final class SubmissionScope
      * as a route prefix, which Laravel trims of slashes. So a route configured as
      * `/cp` serves the Control Panel at `cp` while `isCpRoute()` is false on every
      * request, which would leave every Control Panel read unscoped (#122). This
-     * trims the configured value the same way. An empty route puts the Control
-     * Panel's routes at the root, so every path is one of them.
+     * trims the configured value the same way.
+     *
+     * The path is compared decoded, because the router matches routes against the
+     * decoded path: `/%63p/forms` reaches the Control Panel's forms page, while
+     * `path()` keeps it encoded and core's check is false on it.
+     *
+     * An empty route puts the Control Panel's routes at the root, where they
+     * collide with the front end. Every path then counts as a Control Panel one,
+     * which also scopes front-end and API reads for a signed-in non-super user:
+     * that hides submissions rather than showing them.
      */
     public static function isControlPanelRequest(): bool
     {
@@ -116,7 +124,7 @@ final class SubmissionScope
         }
 
         $prefix = trim($route, '/');
-        $path = trim(request()->path(), '/');
+        $path = trim(request()->decodedPath(), '/');
 
         return $prefix === '' || $path === $prefix || str_starts_with($path, $prefix.'/');
     }
