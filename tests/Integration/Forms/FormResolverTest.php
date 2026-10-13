@@ -99,12 +99,20 @@ it('reaches a driver form class through base(), not through the view', function 
     app()->bind(FormContract::class, $driverForm::class);
 
     $base = FormFacade::make('contact');
-    $base->set('sites', ['en']);
-    $view = (new FormResolver)->resolve($base, 'en');
+    if (! $base instanceof $driverForm) {
+        throw new LogicException('the contract did not resolve to the driver class');
+    }
 
-    expect($base)->toBeInstanceOf($driverForm::class)
-        ->and($view)->not->toBeInstanceOf($driverForm::class)
-        ->and($view?->base())->toBe($base)
-        ->and($view?->base())->toBeInstanceOf($driverForm::class);
-    expect(fn () => $view?->model())->toThrow(BadMethodCallException::class);
+    $base->set('sites', ['en']);
+
+    $view = (new FormResolver)->resolve($base, 'en') ?? throw new LogicException('not resolved');
+
+    $callModel =
+        // @phpstan-ignore method.notFound (model() is the driver's method, which the view deliberately does not have)
+        (fn (): mixed => $view->model());
+
+    expect($view)->not->toBeInstanceOf($driverForm::class)
+        ->and($view->base())->toBe($base)
+        ->and($view->base())->toBeInstanceOf($driverForm::class)
+        ->and($callModel)->toThrow(BadMethodCallException::class);
 });
