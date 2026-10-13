@@ -2,10 +2,13 @@
 
 declare(strict_types=1);
 
+use Illuminate\Routing\RouteCollection;
 use Illuminate\Support\Facades\Bus;
 use Illuminate\Support\Facades\Event;
+use Illuminate\Support\Facades\Route;
 use Statamic\Contracts\Forms\Submission;
 use Statamic\Events\FormSubmitted;
+use Statamic\Events\SubmissionCreated;
 use Statamic\Facades\Form as FormFacade;
 use Statamic\Facades\Stache;
 use Statamic\Forms\Form;
@@ -130,4 +133,60 @@ it('leaves a submission saved without the submit route unattributed', function (
     $submissions = storedFeedback();
     expect($submissions)->toHaveCount(1)
         ->and($submissions[0]->data()->has(RecordSubmitSite::KEY))->toBeFalse();
+});
+
+it('leaves a submission saved on another named route unattributed', function (): void {
+    feedbackForm();
+    $probe = Route::post('msf-probe-save', function (): string {
+        $form = FormFacade::find('feedback');
+        if (! $form instanceof Form) {
+            throw new RuntimeException('The feedback form is missing.');
+        }
+
+        $submission = $form->makeSubmission();
+        $submission->data(['message' => 'saved elsewhere']);
+        $submission->save();
+
+        return 'saved';
+    })->name('msf.probe.save');
+
+    // Ahead of Statamic's catch-all frontend route, which would otherwise match first.
+    $routes = new RouteCollection;
+    $routes->add($probe);
+    foreach (Route::getRoutes()->getRoutes() as $route) {
+        if ($route !== $probe) {
+            $routes->add($route);
+        }
+    }
+
+    Route::setRoutes($routes);
+
+    $this->post('/msf-probe-save', [], ['referer' => 'http://localhost/es/contacto'])->assertOk();
+
+    $submissions = storedFeedback();
+    expect($submissions)->toHaveCount(1)
+        ->and($submissions[0]->data()->has(RecordSubmitSite::KEY))->toBeFalse();
+});
+
+it("leaves another form's submission saved during a submit unattributed", function (): void {
+    feedbackForm();
+    $audit = new Form;
+    $audit->handle('audit');
+    $audit->store(true);
+    $audit->save();
+    Event::listen(SubmissionCreated::class, function (SubmissionCreated $event) use ($audit): void {
+        $submission = $event->submission;
+        if ($submission instanceof Submission && $submission->form()->handle() === 'feedback') {
+            $mirror = $audit->makeSubmission();
+            $mirror->data(['message' => 'mirrored']);
+            $mirror->save();
+        }
+    });
+
+    postFeedback($this, 'http://localhost/es/contacto');
+
+    $mirrored = array_values($audit->submissions()->all());
+    expect(storedFeedback()[0]->get(RecordSubmitSite::KEY))->toBe('es')
+        ->and($mirrored)->toHaveCount(1)
+        ->and($mirrored[0] instanceof Submission ? $mirrored[0]->data()->has(RecordSubmitSite::KEY) : null)->toBeFalse();
 });

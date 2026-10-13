@@ -18,14 +18,17 @@ use UAMSWeb\MultisiteForms\Sites\RequestSite;
  * It listens to `FormSubmitted`, which core dispatches from its submit route
  * after building the submission's data and before saving it or queuing its
  * emails. The site is the one core passes to the email job, from the shared
- * submit-site helper. A visitor cannot set the key: core treats request values
- * starting with `_` as parameters, and only blueprint fields become data.
+ * submit-site helper. A visitor cannot put a value of their own in the request
+ * body: core treats request values starting with `_` as parameters, and only
+ * blueprint fields become data. The site itself comes from the referrer, as
+ * core's email site does, and the submit gate admits only the form's sites.
  *
  * Core dispatches `FormSubmitted` halting on the first listener that returns
  * anything other than null, so a listener registered before this one can stop
  * it from running. `SubmissionCreating` is the backstop: on the submit route, a
- * new submission that reaches its first save without `_site` gets it then. A
- * submission saved any other way is left unattributed, as the spec defines.
+ * new submission of the submitted form that reaches its first save without
+ * `_site` gets it then. A submission saved any other way, including another
+ * form's saved during the submit request, is left unattributed, as the spec defines.
  */
 final class RecordSubmitSite
 {
@@ -56,12 +59,23 @@ final class RecordSubmitSite
             return;
         }
 
+        if ($submission->get(self::KEY) === null && $this->madeByTheRoute($submission)) {
+            $this->record($submission);
+        }
+    }
+
+    /**
+     * Whether the request is core's submit route and the submission is of the form
+     * it submits, so another form's submission saved during the request is left alone.
+     */
+    private function madeByTheRoute(Submission $submission): bool
+    {
         $route = $this->request->route();
-        if (! $route instanceof Route || $route->getName() !== ResolveSubmittedForm::ROUTE || $submission->get(self::KEY) !== null) {
-            return;
+        if (! $route instanceof Route || $route->getName() !== ResolveSubmittedForm::ROUTE) {
+            return false;
         }
 
-        $this->record($submission);
+        return $submission->form()->handle() === $route->originalParameter('form');
     }
 
     private function record(Submission $submission): void
