@@ -84,9 +84,9 @@
         "test": "pest --testsuite=Unit,Integration",
         "stan": "phpstan analyse --no-progress --memory-limit=2G",
         "ci": [
-            "@stan",
             "@test:pint",
             "@test:refactor",
+            "@stan",
             "@test"
         ],
         "refactor": "rector",

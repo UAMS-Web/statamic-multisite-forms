@@ -6,7 +6,7 @@ Statamic add-on that makes forms per-site in a multisite install: site assignmen
 
 ```sh
 composer install
-composer ci    # Larastan, Pint, Rector dry run, Pest (Unit and Integration)
+composer ci    # Pint, Rector dry run, Larastan, Pest (Unit and Integration)
 ```
 
 Requires PHP 8.4 or later and `statamic/cms` 6.35 or later. The project conventions are in [`AGENTS.md`](AGENTS.md).

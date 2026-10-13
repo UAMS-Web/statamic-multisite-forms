@@ -11,7 +11,7 @@ A Statamic add-on (`uams-web/statamic-multisite-forms`, namespace `UAMSWeb\Multi
 ### Commands
 
 - `composer install`: installs dependencies and applies the `patches/` set to `pestphp/pest-plugin-mutate` (temporary, Windows-safe mutation testing; see `upstream-patch-lifecycle`).
-- `composer ci`: the gate, run in order and stopping at the first failure: `stan` (Larastan), `test:pint`, `test:refactor` (Rector dry run), `test` (Pest `Unit` and `Integration`). GitHub Actions runs the same command.
+- `composer ci`: the gate, run in cost order and stopping at the first failure: `test:pint`, `test:refactor` (Rector dry run), `stan` (Larastan), `test` (Pest `Unit` and `Integration`). GitHub Actions runs the same scripts as separate chained jobs (`.github/workflows/ci.yml`), plus `composer validate` and the synced-files check; change a script and its job together.
 - `composer pint` and `composer refactor` apply formatting and the gating Rector profile; `composer refactor:sweep` runs the deliberate sweep profile.
 - `composer mutate`: Pest mutation testing over `src/`. Read `pcov-setup` before trusting a score.
 
