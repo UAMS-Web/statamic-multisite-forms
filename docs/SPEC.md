@@ -18,7 +18,7 @@ This page is a design, not a record of built behavior. Every statement about cor
 | `FormSubmitted` is dispatched with the submission before it is saved and before emails are queued; a listener returning `false` ends the request as a silent success. | `FormController.php` |
 | The `{{ form }}` tags look the form up with `Form::find()` cached under the Blink key `form-{handle}`, or accept a form object from context. | `Forms/Tags.php` `form()`, `formHandle()` |
 | Submissions are Stache-backed. The store's file filter accepts only YAML files directly inside the form's own folder, and the form handle comes from that folder name. | `Stache/Stores/FormSubmissionsStore.php` |
-| The submission query builder accepts arbitrary `where` columns in the general case (it special-cases only `form`, `forms` and the `datestamp` order). Whether an arbitrary data key is indexed is **unverified**. | `Stache/Query/SubmissionQueryBuilder.php` |
+| The submission query builder accepts arbitrary `where` columns (it special-cases only `form`, `forms` and the `datestamp` order). An arbitrary data key is filtered and gets a `Value` index on first use (spike 2). | `Stache/Query/SubmissionQueryBuilder.php` |
 | Form permissions are per form: `view {handle} form submissions`, `delete {handle} form submissions`, plus `configure forms`. Core separately registers `access {site} site`. | `Policies/FormPolicy.php`, `Policies/FormSubmissionPolicy.php`, `Auth/CorePermissions.php` |
 | `Form` is `__clone`-safe: it clones its data and supplements. | `Forms/Form.php` |
 
@@ -102,7 +102,7 @@ The add-on uses core's own rule for the submit request, `Site::findByUrl(URL::pr
 New submissions store the site in the data under `_site`. Core's store, indexes and file layout are untouched.
 
 - **Existing submissions have no `_site`.** They are unattributed. They remain visible to anyone who could see them before. A `multisite-forms:attribute` command assigns a site to unattributed submissions of a form (with `--dry-run` and a log of each change), for installs that want to backfill.
-- **Per-site listing and export** filter on `_site` through the query builder. Whether the key can be queried and indexed by the Stache is **unverified** (spike 2). If it cannot, the fallback is a post-filter, which is correct but not indexed.
+- **Per-site listing and export** filter on `_site` through the query builder. The Stache filters on the key correctly and indexes it on first use (spike 2, below), so no post-filter is needed.
 - **Why not a folder per site, now.** The store's filter only accepts files directly in the form folder, so `contact/clinic/*.yaml` would be invisible to core. A folder layout would mean replacing the store, its key and path rules and its indexes from the first release, and tying the add-on to Stache internals that move between versions. A folder layout can be reached later by a deterministic per-file move, so this choice is reversible and the other is not cheap. The recorded decision is in `docs/DECISIONS.md` once the operator closes it.
 
 ## Control Panel
@@ -144,7 +144,7 @@ Each phase ends with a host-bound test run in `statamic-multisite-forms-host` (`
 ### Spikes
 
 1. **Config round trip.** Resolved (#34); see the results below.
-2. **Querying `_site`.** Does `FormSubmission::query()->where('_site', 'en')` filter correctly, and is it indexed?
+2. **Querying `_site`.** Resolved (#35); see the results below.
 3. **Tag resolution.** Seeding the `form-{handle}` Blink key per request, versus another seam, so the tags see the resolved view without rebinding `Form::find()`.
 4. **Submission listing scope.** Which hook lets the Control Panel listing and the export apply the `_site` scope.
 5. **Resolved view through the controller.** A resolved clone as the bound `form`: does `store()`, `makeSubmission()` and the queued email job read the overrides, and does the submission file stay in the form's own folder?
@@ -178,3 +178,18 @@ Each result names what was measured, where, and what it did not cover. Measured 
 | Control: a handle that was never appended. | Absent from the blueprint |
 
 A grid saves a list of rows, not a map keyed by site, which is why the data model uses a list. Not covered: rendering in a browser, validation messages for the nested grid, and duplicate-site validation (the add-on must supply it).
+
+### Spike 2: querying a reserved `_site` key (#35)
+
+Four submissions were saved to a probe form through `$submission->save()`: two with `_site: en`, one with `_site: es`, and one with no `_site`. They were queried from a separate process, so the Stache was cold.
+
+| Query | Result |
+| --- | --- |
+| `where('form', ...)` alone | all four |
+| `where('_site', 'en')` | the two `en` submissions; `count()` returns 2 |
+| `where('_site', 'es')` | the one `es` submission |
+| `whereIn('_site', ['en', 'es'])` | the three attributed submissions |
+| `whereNull('_site')` | the one unattributed submission |
+| Control: `where('_site', 'xx')` | none |
+
+After the queries, the form's store listed a `_site` index of class `Statamic\Stache\Indexes\Value`, alongside core's `id`, `path`, `form` and `date`. The index is created on first use and is not declared by the add-on, so nothing needs registering. Not covered: query performance at volume, and behavior when the key is absent from every submission of a form.
