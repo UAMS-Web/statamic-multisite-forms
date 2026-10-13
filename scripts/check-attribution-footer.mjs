@@ -98,7 +98,7 @@ export function main(path) {
     }
 
     for (const hit of hits) {
-        console.log(`::error::Line ${hit.line} of the pull-request body carries ${hit.marker}. #2321 forbids the harness attribution footer in pull-request bodies, and the no-emoji rule forbids emoji there.`);
+        console.log(`::error::Line ${hit.line} of the pull-request body carries ${hit.marker}. UAMS-Web/uams-statamic#2321 forbids the harness attribution footer in pull-request bodies, and the no-emoji rule forbids emoji there.`);
     }
 
     return 1;
