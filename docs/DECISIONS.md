@@ -100,3 +100,15 @@ Oldest first, one entry per closed decision, so **a new entry is appended to the
 
 **Companion.** #16.
 
+## 2026-10-12: The Control Panel assets build with Vite and the output is committed (#15)
+
+**Decision.** `vite.config.js` builds `resources/js/cp.js` and `resources/css/cp.css` into `resources/dist`, and the provider registers the build through `$vite`. The built files are committed and stay in release archives; the tooling (`package.json`, the lockfile, `vite.config.js`) is export-ignored. The `Built assets (resources/dist matches source)` job rebuilds and fails when anything under `resources/dist` differs. `vite` is `^6.4.4` and `laravel-vite-plugin` is `^1.3.0`, the lines Statamic's guide names; `laravel-vite-plugin` 3 needs Vite 8.
+
+**Why.** A Composer install does not run npm, so a release that does not carry the build ships nothing the Control Panel can load. A stale committed build is the failure that does not announce itself, so a job compares it with a fresh one.
+
+**`.npmrc` policy.** No change was needed. With `ignore-scripts`, `min-release-age=3` and `engine-strict` in force, `npm install` resolved the Vite toolchain and `npm run build` produced the manifest on Windows 11 (npm 11.19.0). `@statamic/cms` is a `file:` link, so it is not subject to the release-age floor, and every job that runs `npm ci` now runs the Composer setup first.
+
+**Rejected.** Building in release tooling only and leaving `resources/dist` out of git: a path-repository or VCS install would then have no assets. Ignoring the dev build: Statamic's guide says not to commit it, and this commits only the production build.
+
+**Companion.** #15.
+

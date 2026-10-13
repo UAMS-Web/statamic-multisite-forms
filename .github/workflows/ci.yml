@@ -85,6 +85,9 @@ jobs:
     timeout-minutes: 10
     steps:
       - uses: actions/checkout@v7
+      # `@statamic/cms` is a `file:` link into `vendor/statamic/cms`, so `npm ci` needs Composer's
+      # install first.
+      - uses: ./.github/actions/setup
 
       - uses: actions/setup-node@v7
         with:
@@ -97,6 +100,35 @@ jobs:
 
       - run: npm ci
       - run: npm run test:scripts
+
+  built-assets:
+    name: Built assets (resources/dist matches source)
+    runs-on: ubuntu-latest
+    timeout-minutes: 10
+    steps:
+      - uses: actions/checkout@v7
+      - uses: ./.github/actions/setup
+
+      - uses: actions/setup-node@v7
+        with:
+          node-version: '22'
+
+      - name: Pin npm to the engines floor
+        run: npm install -g npm@^11.10.0
+
+      - run: npm ci
+
+      # The built files are committed, because a Composer install does not run npm. A fresh
+      # build that differs from what is committed means the sources changed without a rebuild.
+      - run: npm run build
+      - name: Fail if the committed build is out of date
+        run: |
+          changes=$(git status --porcelain -- resources/dist)
+          if [ -n "$changes" ]; then
+            echo "$changes"
+            echo "::error::resources/dist differs from a fresh build. Run npm run build and commit the result."
+            exit 1
+          fi
 
   mutate-ignore:
     name: Mutation annotations (none inert)
