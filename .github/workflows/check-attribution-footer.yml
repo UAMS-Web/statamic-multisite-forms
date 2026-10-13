@@ -24,6 +24,7 @@ permissions: {}
 
 jobs:
   check:
+    name: Attribution footer
     runs-on: ubuntu-latest
     timeout-minutes: 5
     permissions:
