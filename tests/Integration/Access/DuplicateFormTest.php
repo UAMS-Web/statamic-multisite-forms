@@ -8,6 +8,7 @@ use Statamic\Actions\DuplicateForm as CoreDuplicateForm;
 use Statamic\Auth\File\User as UserObject;
 use Statamic\Facades\Action;
 use Statamic\Facades\Form as FormFacade;
+use Statamic\Fields\BlueprintRepository;
 use Statamic\Forms\Form;
 use Symfony\Component\HttpFoundation\Response;
 use UAMSWeb\MultisiteForms\Actions\DuplicateForm;
@@ -32,6 +33,10 @@ beforeEach(function (): void {
     useTemporaryFormsDirectory();
     $this->rolesFile = useTemporaryRoles();
 
+    // The action writes the copy's blueprint, so blueprints go to a directory of this test's own
+    $this->blueprintsDirectory = sys_get_temp_dir().'/msf-blueprints-'.uniqid('', true);
+    app(BlueprintRepository::class)->setDirectories($this->blueprintsDirectory);
+
     foreach (DUPLICATE_FORMS as $handle => $sites) {
         $form = FormFacade::make($handle);
         if (! $form instanceof Form) {
@@ -48,6 +53,7 @@ beforeEach(function (): void {
 afterEach(function (): void {
     removeFormsDirectory();
     File::delete($this->rolesFile);
+    File::deleteDirectory($this->blueprintsDirectory);
 });
 
 /**
@@ -154,7 +160,8 @@ test('a form the user can view is duplicated with its sites', function (string $
 
     $copy = storedCopy();
     expect($copy->get('sites'))->toBe(DUPLICATE_FORMS[$source])
-        ->and($copy->email())->toBe([['to' => "{$source}@example.com"]]);
+        ->and($copy->email())->toBe([['to' => "{$source}@example.com"]])
+        ->and(File::exists($this->blueprintsDirectory.'/forms/copy.yaml'))->toBeTrue();
 })->with([
     'es user, es form' => ['es-configurer', 'es', 'spanish'],
     'es user, shared form' => ['es-configurer', 'es', 'shared'],
