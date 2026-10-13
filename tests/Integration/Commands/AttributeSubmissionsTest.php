@@ -14,6 +14,7 @@ use Statamic\Events\SubmissionSaving;
 use Statamic\Facades\Form as FormFacade;
 use Statamic\Facades\FormSubmission;
 use Statamic\Facades\Stache;
+use Statamic\Facades\YAML;
 use Statamic\Forms\Form;
 use Statamic\Forms\Submission;
 use Statamic\Stache\Stores\Store;
@@ -172,12 +173,87 @@ function unattributedIds(string $form): array
     return $ids;
 }
 
+/**
+ * Store a submission of a form whose file holds an empty `_site`, as a direct
+ * import writes it: core drops an empty `_site` whenever it saves one (#130).
+ *
+ * @return string The submission file's path
+ */
+function saveWithEmptySite(string $directory, string $form, string $id): string
+{
+    $handle = FormFacade::find($form);
+    if (! $handle instanceof Form) {
+        throw new RuntimeException("There is no form [{$form}].");
+    }
+
+    $submission = $handle->makeSubmission();
+    $submission->id($id);
+    $submission->set('name', 'blank');
+    $submission->set('_site', 'placeholder');
+    $submission->save();
+
+    $path = null;
+    foreach (File::allFiles($directory.'/_submissions') as $file) {
+        if ($file->getFilename() === "{$id}.yaml") {
+            $path = $file->getPathname();
+        }
+    }
+
+    if ($path === null) {
+        throw new RuntimeException("The submission [{$id}] was not stored.");
+    }
+
+    $data = YAML::parse(File::get($path));
+    $data['_site'] = '';
+    File::put($path, YAML::dump($data));
+    Stache::clear();
+
+    return $path;
+}
+
 it('records the site on the submissions that have none, and leaves the rest', function (): void {
     attribute($this, ['form' => 'shared', 'site' => 'es'])
         ->expectsOutputToContain('Attributed 2 submissions of [shared] to [es].')
         ->assertSuccessful();
 
     expect(recordedSites('shared'))->toBe(['en0' => 'en', 'es1' => 'es', 'none2' => 'es', 'none3' => 'es']);
+});
+
+it('attributes a submission whose file holds an empty site, and leaves no empty site behind', function (): void {
+    $path = saveWithEmptySite($this->directory, 'shared', 'shared-blank');
+    expect(YAML::parse(File::get($path)))->toHaveKey('_site', '');
+
+    attribute($this, ['form' => 'shared', 'site' => 'es'])
+        ->expectsOutputToContain('Attributed shared-blank')
+        ->expectsOutputToContain('Attributed 3 submissions of [shared] to [es].')
+        ->assertSuccessful();
+
+    Stache::clear();
+
+    expect(YAML::parse(File::get($path)))->toHaveKey('_site', 'es')
+        ->and(recordedSites('shared'))->toBe(['blank' => 'es', 'en0' => 'en', 'es1' => 'es', 'none2' => 'es', 'none3' => 'es']);
+});
+
+it('counts a submission with an empty site in a dry run, and leaves its file alone', function (): void {
+    $path = saveWithEmptySite($this->directory, 'shared', 'shared-blank');
+    $before = File::get($path);
+
+    attribute($this, ['form' => 'shared', 'site' => 'es', '--dry-run' => true])
+        ->expectsOutputToContain('Would attribute shared-blank')
+        ->expectsOutputToContain('Would attribute 3 submissions of [shared] to [es].')
+        ->assertSuccessful();
+
+    expect(File::get($path))->toBe($before);
+});
+
+it("leaves another form's submission with an empty site alone", function (): void {
+    $path = saveWithEmptySite($this->directory, 'english', 'english-blank');
+
+    attribute($this, ['form' => 'shared', 'site' => 'en'])
+        ->expectsOutputToContain('Attributed 2 submissions of [shared] to [en].')
+        ->assertSuccessful();
+
+    expect(YAML::parse(File::get($path)))->toHaveKey('_site', '');
 });
 
 it("leaves other forms' submissions alone", function (): void {

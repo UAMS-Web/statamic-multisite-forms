@@ -26,7 +26,8 @@ use UAMSWeb\MultisiteForms\Forms\RecordSubmitSite;
  * A submission saved before the add-on recorded `_site`, or one saved outside the
  * submit route, has no site, and the Control Panel shows it only to a user who can
  * access every site its form is assigned to (#40). This command backfills such
- * submissions with one site, so editors of that site see them. Submissions that
+ * submissions with one site, so editors of that site see them. A submission whose
+ * file holds an empty `_site` is repaired the same way (#140). Submissions that
  * already record a site are left as they are.
  *
  * It reads through the submission query builder, so it works on whichever driver
@@ -132,7 +133,11 @@ final class AttributeSubmissions extends Command
     }
 
     /**
-     * The form's submissions that record no site.
+     * The form's submissions that record no site, or an empty one.
+     *
+     * Core drops an empty `_site` whenever it saves a submission, so an empty one
+     * comes only from a file written around core, such as a direct import, and
+     * saving it here writes the chosen site in its place (#130).
      *
      * @return iterable<Submission>
      */
@@ -142,7 +147,10 @@ final class AttributeSubmissions extends Command
         /** @var Builder|EloquentQueryBuilder $query */
         $query = FormSubmission::query();
         $query->where('form', $form);
-        $query->whereNull(RecordSubmitSite::KEY);
+        $query->where(static function (Builder|EloquentQueryBuilder $query): void {
+            $query->whereNull(RecordSubmitSite::KEY);
+            $query->orWhere(RecordSubmitSite::KEY, '');
+        });
 
         // Core's submissions and the Eloquent driver's both extend core's Submission class
         /** @var iterable<Submission> */
