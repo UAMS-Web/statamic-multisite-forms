@@ -255,8 +255,14 @@ it('renders nothing rather than aborting again while the 404 page renders the sa
     taggedForm(['en']);
     Site::setCurrent('es');
 
+    $other = new Form;
+    $other->handle('newsletter');
+    $other->set('sites', ['en']);
+    $other->save();
+
     expect(fn (): mixed => formTag('create')->create())->toThrow(NotFoundHttpException::class)
-        ->and(formTag('create')->create())->toBe('');
+        ->and(formTag('create')->create())->toBe('')
+        ->and(formTag('create', ['in' => 'newsletter'])->create())->toBe('');
 });
 
 it('leaves form:fields to core, which renders only what form:create hands it', function (): void {

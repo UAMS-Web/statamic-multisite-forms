@@ -48,8 +48,8 @@ class FormTags extends Tags
     protected static $handle = 'form';
 
     /**
-     * Set while the request is being aborted with a 404, so the error page,
-     * which may share a layout that renders the same form, does not abort again.
+     * Holds the handle of the form a 404 is aborting the request for, so no form
+     * on the error page, whose layout may render forms too, aborts it again.
      */
     private const string ABORTING = 'multisite-forms.not-assigned.aborting';
 
@@ -80,14 +80,13 @@ class FormTags extends Tags
     }
 
     /**
+     * Core's returns the submission only after `success`, which is gated, so an
+     * unassigned form gets null here without a gate of its own.
+     *
      * @return array<array-key, mixed>|null
      */
     public function submission(): mixed
     {
-        if ($this->gated()) {
-            return null;
-        }
-
         $submission = parent::submission();
 
         return is_array($submission) ? $submission : null;
@@ -129,11 +128,11 @@ class FormTags extends Tags
         $site = RequestSite::handle(app(RequestSite::class)->forPage());
 
         if (NotAssigned::fromConfig() === NotAssigned::NotFound) {
-            if (Blink::has(self::ABORTING)) {
+            if (is_string(Blink::get(self::ABORTING))) {
                 return true;
             }
 
-            Blink::put(self::ABORTING, true);
+            Blink::put(self::ABORTING, $handle);
 
             throw new NotFoundHttpException("Form [{$handle}] is not assigned to site [{$site}].");
         }
