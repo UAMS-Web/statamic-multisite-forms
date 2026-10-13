@@ -4,6 +4,8 @@ declare(strict_types=1);
 
 namespace UAMSWeb\MultisiteForms\Forms;
 
+use Illuminate\Pipeline\Pipeline;
+use Illuminate\Support\Collection;
 use ReflectionClass;
 use Statamic\Forms\Form;
 use UAMSWeb\MultisiteForms\Exceptions\ReadOnlyFormException;
@@ -85,6 +87,30 @@ class SiteForm extends Form
     public function delete(): never
     {
         throw ReadOnlyFormException::for('deleted', $this->handleName(), $this->site);
+    }
+
+    /**
+     * Run the hooks registered on core's Form, then those registered on this class.
+     *
+     * Core files a hook under the class it was registered on and runs only the
+     * hooks filed under `static::class`, so without this a hook an add-on or app
+     * registered with `Form::hook()` would silently skip every resolved view.
+     *
+     * @param  mixed  $payload
+     * @return mixed
+     */
+    protected function runHooks(string $name, $payload = null)
+    {
+        $hooks = app('statamic.hooks');
+
+        $closures = Collection::wrap(data_get($hooks, [Form::class, $name], []))
+            ->merge(Collection::wrap(data_get($hooks, [static::class, $name], [])))
+            ->map->bindTo($this, $this);
+
+        return (new Pipeline)
+            ->send($payload)
+            ->through($closures->all())
+            ->thenReturn();
     }
 
     /**

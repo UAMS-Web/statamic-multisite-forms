@@ -79,11 +79,13 @@ it('keeps the base handle, so the action URL is the base form URL', function ():
     expect((new FormResolver)->resolve($base, 'es')?->actionUrl())->toBe($base->actionUrl());
 });
 
-it('leaves the base form unchanged', function (): void {
+it('leaves the base form unchanged when its view is changed', function (): void {
     $base = resolvableForm(['en', 'es']);
-    $before = $base->toArray();
 
-    (new FormResolver)->resolve($base, 'es');
+    $view = (new FormResolver)->resolve($base, 'es');
+    $view?->set('sites', ['es']);
+    $view?->title('Contacto');
 
-    expect($base->toArray())->toBe($before);
+    expect($base->get('sites'))->toBe(['en', 'es'])
+        ->and($base->title())->toBe('Contact');
 });
