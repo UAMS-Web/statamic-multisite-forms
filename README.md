@@ -4,7 +4,7 @@ A Statamic add-on that makes forms per-site in a multisite install: site assignm
 
 ## Status
 
-Early development. The add-on installs, registers its service provider and builds its Control Panel assets, but it does not change how forms behave yet. The behavior described under "What it will do" is the plan, not what ships today. It is free, has no editions, and is licensed under MIT.
+Early development. Site assignment is in progress: a form's settings screen has a Sites field, a submit from a site the form is not assigned to answers 404, and the form tags follow the `not_assigned` setting below. The rest of "What it will do" is the plan, not what ships today. It is free, has no editions, and is licensed under MIT.
 
 ## What it will do
 
@@ -31,7 +31,24 @@ Statamic discovers the add-on from the package, and it appears under Addons in t
 
 ## Configuration
 
-There is nothing to configure yet. Settings are documented here as the features that use them land.
+Publish the config file to change a setting:
+
+```sh
+php artisan vendor:publish --tag=statamic-multisite-forms-config
+```
+
+That writes `config/statamic-multisite-forms.php`. It has one setting.
+
+### `not_assigned`
+
+What the `{{ form }}` tags (`form:create`, the `{{ form:contact }}` shorthand, `form:errors`, `form:success`, `form:submission` and `form:submissions`) do with a form that is not assigned to the site the page is rendered for:
+
+- `empty` (the default) renders nothing, and `form:submissions` renders as it does for a form with no submissions, so a `no_results` branch still shows. A warning naming the form and the site is logged at `warning` level, once per form and site per request, so a shared layout that renders the form on every page logs one line per page view rather than one per tag.
+- `404` aborts the request with the site's 404 page, as Statamic's `{{ 404 }}` tag does. If the 404 page's layout renders the same form, it renders nothing there rather than aborting again.
+
+`form:fields` inside `form:create` needs no gate of its own: it renders only the fields `form:create` hands it.
+
+A form assigned to the page's site, and a form with no sites, render as Statamic renders them. A submit to a form from a site it is not assigned to always answers 404, whatever `not_assigned` says.
 
 ## Development
 

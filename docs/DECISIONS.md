@@ -214,3 +214,15 @@ Oldest first, one entry per closed decision, so **a new entry is appended to the
 
 **Companion.** #57. Related: #42, #62.
 
+
+## 2026-10-13: The form tags are gated by a subclass of core's tags, not by a Blink seed alone (#73)
+
+**Decision.** The add-on registers `FormTags`, a subclass of core's `Statamic\Forms\Tags`, under core's `form` handle. Each tag that reads a form resolves it for the page's site; an unassigned form renders nothing or aborts with 404, per `not_assigned`. Under `empty`, `create` returns an empty string, `errors` and `success` return `false`, and `submission` returns null, as core's does before a submit. `submissions` returns an empty list, which a tag pair renders as it renders a form with no submissions, since that is the value a template already handles. `form:fields` is left to core, because it reads only the fields `form:create` hands it. Under `404` the tag throws Statamic's `NotFoundHttpException`, as core's `{{ 404 }}` tag does, so the response is the site's 404 page in its layout; once the request is aborting, a further gated tag (in a layout the error page shares) renders nothing instead of throwing again, which would make the response a 500. The warning for `empty` is logged at `warning` level, once per form and site per request.
+
+**Why.** The spec's mechanism, seeding core's `form-{handle}` Blink key with the site's view (spike 3), cannot meet the ticket alone. Core's `formHandle()` puts a form passed in from context straight into that key, replacing the seed, so a form handed to the tag as an object would render on every site. And a missing form makes core throw (`getForm()`), so nothing seeded can make the tag render empty. Resolving inside the tag closes both and needs no early-request hook. Once per request at `warning` keeps a shared layout to one line per page view while still surfacing an authoring slip.
+
+**Rejected.** Seeding Blink from a middleware: misses the context case and cannot render empty. Seeding every form on every front-end request: the same gaps, plus a lookup of every form per request. Logging every render: a layout with the form in several places floods the log. Logging at `debug`: hides the authoring slip the warning exists to show.
+
+**Residual.** Another add-on, or an app-level `app/Tags` class, that also registers the `form` handle conflicts with this one: core registers app tags before add-ons boot, so this add-on silently replaces an app's, and between two add-ons whichever registers last wins. An invalid `not_assigned` value is reported only when a page meets an unassigned form. When the tag is fetched with no parser (`Statamic::tag('form:create')->fetch()`), core returns the form's data as an array, and a gated tag returns an empty string instead, which a template indexing into the result does not expect.
+
+**Companion.** #73. Earlier decision: #39. Spec: `docs/SPEC.md`.
