@@ -117,6 +117,7 @@
         "pint": "pint",
         "test:pint": "pint --test",
         "mutate": [
+            "Composer\\Config::disableProcessTimeout",
             "@php vendor/bin/pest --mutate --path=src"
         ]
     },
