@@ -239,10 +239,6 @@ final class SubmissionScope
      */
     private static function coveredForms(UserContract $user): array
     {
-        // Starting from false sends every user down the id rule, which keeps the same
-        // submissions as the null rule when every form is covered, so TrueToFalse is
-        // equivalent; the null rule only saves reading the ids.
-        // @pest-mutate-ignore: TrueToFalse
         $all = true;
         $handles = [];
         $others = [];
@@ -269,11 +265,13 @@ final class SubmissionScope
 
     /**
      * The ids of the submissions with no `_site` in the given forms, less any id a
-     * submission of one of the other forms also carries.
+     * submission of one of the other forms, or an attributed submission of one of
+     * the given forms, also carries.
      *
      * An id is not unique across forms (it is the submission's file name, and a
-     * copied or imported file can repeat one), and the id rule is not tied to a
-     * form, so an id shared with a form the user does not cover is dropped.
+     * copied or imported file can repeat one), and the id rule is not tied to a form
+     * or a site, so an id shared with any submission the rule should not reach is
+     * dropped, which hides the unattributed submission too.
      *
      * @param  list<mixed>  $forms
      * @param  list<mixed>  $others
@@ -296,17 +294,31 @@ final class SubmissionScope
                 $query->whereNull('_site');
             });
 
-            if ($ids === [] || $others === []) {
+            // Without this return, both reads below match no id and the result is the
+            // same empty list; it only saves the reads, so removing it is equivalent.
+            // @pest-mutate-ignore: RemoveEarlyReturn
+            if ($ids === []) {
                 return $ids;
             }
 
-            // Without the id condition the read returns every id of the other forms, which
-            // drops the same ids; the condition only narrows the read, so removing it is
-            // equivalent.
+            // The id rule keeps any submission with one of these ids, so an id that an
+            // attributed submission of a covered form also carries would show that one
+            // whatever its site (#123). Without the id condition the read returns every
+            // attributed id of those forms, which drops the same ids; the condition only
+            // narrows the read, so removing it is equivalent.
             // @pest-mutate-ignore: RemoveMethodCall
-            $shared = self::idsOf($others, static function (Builder|EloquentQueryBuilder $query) use ($ids): void {
+            $shared = self::idsOf($forms, static function (Builder|EloquentQueryBuilder $query) use ($ids): void {
+                $query->whereNotNull('_site');
                 $query->whereIn('id', $ids);
             });
+
+            if ($others !== []) {
+                // As above for the other forms, whatever their submissions' sites.
+                // @pest-mutate-ignore: RemoveMethodCall
+                $shared = [...$shared, ...self::idsOf($others, static function (Builder|EloquentQueryBuilder $query) use ($ids): void {
+                    $query->whereIn('id', $ids);
+                })];
+            }
 
             return array_filter($ids, static fn (mixed $id): bool => ! in_array($id, $shared, true));
         } finally {

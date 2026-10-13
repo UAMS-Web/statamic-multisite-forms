@@ -602,3 +602,66 @@ it('keeps the plan of one user from another in the same request', function (): v
 
     expect([$spanish, submissionsOf(['shared'])->count()])->toBe([1, 3]);
 });
+
+/**
+ * Make a form for the given sites holding one unattributed submission with the given id.
+ *
+ * @param  list<string>  $sites
+ */
+function formWithUnattributed(string $handle, array $sites, string $id): void
+{
+    $form = FormFacade::make($handle);
+    if (! $form instanceof Form) {
+        throw new RuntimeException('The forms repository did not make a form.');
+    }
+
+    $form->title(ucfirst($handle));
+    $form->set('sites', $sites);
+    $form->save();
+
+    $submission = $form->makeSubmission();
+    $submission->id($id);
+    $submission->set('name', 'collision');
+    $submission->save();
+}
+
+it('drops an unattributed id that a submission of another site in a covered form also carries', function (): void {
+    // The es-only form keeps the en submission it was saved with; a second es-only
+    // form's unattributed submission carries the same id, as a copied file can
+    formWithUnattributed('spanish_copy', ['es'], scopeSubmissionId('spanish', 'en'));
+
+    $this->actingAs(scopeUser('es-only', ['es']));
+
+    expect(listedNames($this, 'spanish'))->toBe(['es', 'none']);
+});
+
+it('keeps an unattributed submission whose id another site carries when the user covers every form', function (): void {
+    foreach (['shared', 'everywhere'] as $handle) {
+        $form = FormFacade::find($handle);
+        if (! $form instanceof Form) {
+            throw new RuntimeException("No [{$handle}] form.");
+        }
+
+        $form->delete();
+    }
+
+    formWithUnattributed('spanish_copy', ['es'], scopeSubmissionId('spanish', 'en'));
+
+    $this->actingAs(scopeUser('es-only', ['es']));
+    onPath('/cp/forms');
+
+    expect(submissionsOf(['spanish_copy'])->count())->toBe(1);
+});
+
+it('hides a submission moved to another site in the same request', function (): void {
+    $submission = FormSubmission::find(scopeSubmissionId('spanish', null));
+
+    $this->actingAs(scopeUser('es-only', ['es']));
+    onPath('/cp/forms');
+
+    $before = submissionsOf(['spanish'])->count();
+    $submission->set('_site', 'en');
+    $submission->save();
+
+    expect([$before, submissionsOf(['spanish'])->count()])->toBe([2, 1]);
+});
