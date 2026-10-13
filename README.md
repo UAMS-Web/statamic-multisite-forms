@@ -104,6 +104,17 @@ Access to forms in the Control Panel follows the site access a user already has,
 
 A form whose `sites` names a site no longer configured is open to super users only.
 
+## Attributing older submissions
+
+A submission with no recorded site, such as one saved before the add-on was installed or by code that saves a submission itself, shows in the Control Panel only to users who can access every site its form is assigned to. To show a form's unattributed submissions to the editors of one site, record that site on them:
+
+```sh
+php please multisite-forms:attribute contact en --dry-run   # list what would change
+php please multisite-forms:attribute contact en
+```
+
+The command records the site on every submission of the form that has none, and leaves submissions that already record a site alone. It prints each submission it changes and a count, and logs each change at `info` level with the form, the submission's id and the site. `--dry-run` prints the same list and changes nothing. An unknown form or site, or a site the form is not assigned to, is an error and changes nothing; a form with no sites takes any site. Handles match exactly, including case. Submissions are saved quietly, so no submission event fires, and no email is sent, as for any save outside the submit route. The command leaves alone a submission whose recorded site is an empty string, which it does not count as unattributed. It works with submissions in flat files or in the database through `statamic/eloquent-driver`.
+
 ## Checking a form's site in a template
 
 `form:assigned` answers whether a form renders on the page's site, so a template can hide what surrounds it, such as a heading or an introduction. It is true for a form assigned to the site or one with no sites, and false for a form assigned elsewhere or one that does not exist. It never aborts or logs, whatever `not_assigned` says.

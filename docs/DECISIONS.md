@@ -377,3 +377,15 @@ Oldest first, one entry per closed decision, so **a new entry is appended to the
 **Residual.** A submission recorded for a site the form is no longer assigned to cannot be chosen in the filter, though it still shows unfiltered to a user who can access that site.
 
 **Companion.** #58. Earlier decisions: #41, #78.
+
+## 2026-10-13: The attribute command refuses a site the form is not assigned to, and saves quietly (#81)
+
+**Decision.** `multisite-forms:attribute {form} {site}` records `_site` on every submission of the form that has none, read with `whereNull('_site')` through the submission query builder. An unknown form or site, and a site the form is not assigned to, is an error with a non-zero exit. The form is matched by its exact handle, not with `Form::find()`, which on a filesystem that ignores case returns a form under the handle as typed and saves its submissions through another Stache store. Submissions are saved with `saveQuietly()`. Each change is logged at `info` level with the form, the submission's id and the site; `--dry-run` reports the same list and writes and logs nothing.
+
+**Why.** A submission recorded for a site its form does not cover is one the Site filter cannot offer (#58), so the command would create the case that decision leaves as a residual. Core's own data migrations (`statamic:migrate-dates-to-utc`) save quietly: a backfill is not a new submission, so it should fire no event a listener, such as a Git integration committing each save, would act on. Core sends a form's email only from its submit route, so no save sends one. Reading through the query builder serves the Stache and the Eloquent driver alike, both measured.
+
+**Rejected.** Allowing any configured site: it would let a backfill hide submissions from the form's own editors. Saving with events: a large backfill would trigger a listener per submission for a change no listener needs to see.
+
+**Residual.** A search index that indexes submissions is not told of the change, as with core's data migrations. The unattributed submissions are read at once, which on the Eloquent driver holds them all in memory; not measured at volume. A submission whose `_site` is an empty string is neither read as unattributed nor shown by the Control Panel scope to anyone but super users; the add-on never writes one, and #130 decides it.
+
+**Companion.** #81. Earlier decisions: #40, #58.

@@ -56,9 +56,11 @@ beforeEach(function (): void {
 
         $form->save();
 
-        // One submission per site, and one with no site, named after the site
+        // One submission per site, and one with no site, named after the site. Core's
+        // default id has 0.1ms resolution, so two saved that close would share one.
         foreach (['en', 'es', null] as $site) {
             $submission = $form->makeSubmission();
+            $submission->id("{$handle}-".($site ?? 'none'));
             $submission->set('name', $site ?? 'none');
             if ($site !== null) {
                 $submission->set('_site', $site);
