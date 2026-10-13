@@ -262,7 +262,7 @@ Oldest first, one entry per closed decision, so **a new entry is appended to the
 
 **Rejected.** Refusing any handle the editor cannot view, and merging an existing assignment to such a site back in on save: stricter than core, and it needs a rule that reads the current user's permissions. Refusing only additions: the same cost, with the same small gain.
 
-**Residual.** Whether saving the screen drops an existing assignment to a site the editor cannot view is not yet measured. The server passes the stored handles through and sends that site to the browser marked invalid; what the Control Panel's select input posts back is measured in #101, and a drop would be a bug filed from there, since a form assigned only to that site would save as global.
+**Residual.** Saving the screen keeps an existing assignment to a site the editor cannot view (measured in #101): the field lists that site by its handle rather than its name, and posts it back with the rest. An editor can still remove it from the field on purpose, as with any selected site.
 
 **Companion.** #85; measurement in #101. Earlier decision: #70.
 
