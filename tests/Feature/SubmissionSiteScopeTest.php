@@ -15,7 +15,7 @@ use Tests\TestCase;
 /**
  * Host-bound: on a real multisite host, an `es`-only Control Panel user lists,
  * opens and exports only the `es` submission of an `en`-and-`es` form, while a
- * super user reads all three (#78).
+ * super user reads all three (#78), and the Site filter narrows both to one site (#58).
  *
  * The add-on's Integration suite covers the scope against a minimal Testbench app;
  * this run confirms it holds behind the host's full provider list, its own sites,
@@ -113,5 +113,35 @@ final class SubmissionSiteScopeTest extends TestCase
         $rows = json_decode((string) $this->get(cp_route('forms.export', ['msf_host_scoped', 'json']))->assertOk()->getContent(), true);
 
         $this->assertSame([$this->ids['es']], array_column($rows, 'id'));
+    }
+
+    /** The submissions page offers the Site filter, which narrows the listing and the export to one site (#58). */
+    public function test_the_site_filter_narrows_the_listing_and_the_export(): void
+    {
+        $this->actingAs(User::make()->id('msf-host-filter-admin')->email('msf-host-filter-admin@example.com')->makeSuper());
+
+        $page = $this->get(cp_route('forms.show', 'msf_host_scoped'))->assertOk()->viewData('page');
+        $this->assertContains('submission_site', array_column($page['props']['filters'], 'handle'));
+
+        $filters = '?filters='.base64_encode((string) json_encode(['submission_site' => ['site' => 'en']]));
+        $listed = $this->getJson(cp_route('forms.submissions.index', 'msf_host_scoped').$filters)->assertOk()->json('data');
+        $exported = json_decode((string) $this->get(cp_route('forms.export', ['msf_host_scoped', 'json']).$filters)->assertOk()->getContent(), true);
+
+        $this->assertSame([$this->ids['en']], array_column($listed, 'id'));
+        $this->assertSame([$this->ids['en']], array_column($exported, 'id'));
+    }
+
+    /** For a user scoped to es, the filter narrows within the scope and never past it (#58). */
+    public function test_the_site_filter_stays_inside_the_scope(): void
+    {
+        $this->actingAs($this->spanishReader());
+        $url = cp_route('forms.submissions.index', 'msf_host_scoped').'?filters=';
+
+        $spanish = $this->getJson($url.base64_encode((string) json_encode(['submission_site' => ['site' => 'es']])))->assertOk();
+        $english = $this->getJson($url.base64_encode((string) json_encode(['submission_site' => ['site' => 'en']])))->assertOk();
+
+        $this->assertSame([$this->ids['es']], array_column($spanish->json('data'), 'id'));
+        $this->assertSame([], array_column($english->json('data'), 'id'));
+        $this->assertSame(['submission_site' => 'Site: en'], $english->json('meta.activeFilterBadges'));
     }
 }
