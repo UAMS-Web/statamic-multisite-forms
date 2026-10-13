@@ -110,7 +110,7 @@ New submissions store the site in the data under `_site`. Core's store, indexes 
 No Control Panel view is replaced.
 
 - **Form visibility.** Core's index keeps only forms the user `can('view')`. The add-on adds a gate callback on the form and submission abilities: a form with a non-empty `sites` list is denied to a user who has no `access {site} site` for any assigned site. Super users are untouched. The index therefore scopes itself.
-- **Submission visibility.** A user sees submissions whose `_site` is a site they can access, and unattributed submissions only when they can access every site the form is assigned to. Where the listing and export controllers read submissions without a hook that can apply this, a thin controller-level scope is needed (spike 4), and if that proves unclean the fallback is a site filter parameter rather than an altered screen.
+- **Submission visibility.** A user sees submissions whose `_site` is a site they can access, and unattributed submissions only when they can access every site the form is assigned to. Every Control Panel read goes through `Form::querySubmissions()` or `FormSubmission::find()`, which resolve to the container-bound `SubmissionQueryBuilder` contract. One bound subclass that adds the user's site scope therefore covers the listing, the detail view and delete without replacing a controller (spike 4). Whether that binding is acceptable is a decision, not a settled design: see the open questions.
 - **Permissions.** No new keys. Per-site access is the intersection of a core form permission and a core site permission, so an administrator already has the controls. This differs from per-form-per-site keys on purpose: it is less expressive and far less to keep correct. If per-form-per-site grants are demanded, they are an addition.
 - **Site selector.** Core's Control Panel already tracks a selected site. Making the forms index filter by the *selected* site, instead of by access, needs UI and is deferred.
 
@@ -146,7 +146,7 @@ Each phase ends with a host-bound test run in `statamic-multisite-forms-host` (`
 1. **Config round trip.** Resolved (#34); see the results below.
 2. **Querying `_site`.** Resolved (#35); see the results below.
 3. **Tag resolution.** Resolved (#36); see the results below.
-4. **Submission listing scope.** Which hook lets the Control Panel listing and the export apply the `_site` scope.
+4. **Submission listing scope.** Resolved (#37); see the results below.
 5. **Resolved view through the controller.** A resolved clone as the bound `form`: does `store()`, `makeSubmission()` and the queued email job read the overrides, and does the submission file stay in the form's own folder?
 
 ## Open questions
@@ -156,6 +156,7 @@ Each phase ends with a host-bound test run in `statamic-multisite-forms-host` (`
 - [ ] Is access-based scoping (proposed) enough for the first release, or is a selected-site filter on the forms index required?
 - [ ] Who may assign a form to a site: anyone who can edit the form (proposed), or only users with access to every site being added.
 - [ ] Submissions as a flat store with `_site` (proposed) or a folder per site; this closes in `docs/DECISIONS.md` as a decision fork.
+- [ ] Whether the add-on binds its own `SubmissionQueryBuilder` to scope submissions by site (proposed by spike 4), or scopes with controller overrides or a filter parameter instead.
 
 ## Test plan
 
@@ -207,3 +208,21 @@ The `create` tag looks its form up with `Blink::once("form-{handle}", ...)`. A p
 The base file on disk still read `base_trap` after the seeded render, and the form's action URL was unchanged (`/!/forms/spike_t`). So the tags accept a resolved view through Blink with no change to `Form::find()` or the repository. The seed must happen before the tag runs and within the same request, because Blink is request-scoped. Not covered: a render through a real page request and view, since `Antlers::parse` in a console returned empty output for every tag tried, including a control tag, so the probe went through the tag class directly.
 
 The `create` tag also runs `attrs`, `after-open` and `before-close` hooks (`Forms/Tags.php`). `after-open` is a candidate seam for carrying a signed site value in a hidden field later, the hardening named under Site determination. It was read in source, not exercised.
+
+### Spike 4: scoping submissions by site (#37)
+
+Core's submission listing, export, detail view and delete all read through the container-bound `Statamic\Contracts\Forms\SubmissionQueryBuilder` (`Form::querySubmissions()` and `FormSubmission::find()`). A probe bound a subclass of the core builder, built with the `form-submissions` store the way core's own binding builds it, that adds `(_site in the user's accessible sites) or _site is null` for a non-super user. It then made real in-process Control Panel requests as a user holding `access cp`, `view` and `delete` on the form and `access en site` but not `access es site`. Three submissions existed: `en`, `es` and unattributed.
+
+| Request | Scope off (control) | Scope on |
+| --- | --- | --- |
+| `GET /cp/forms/{form}/submissions` | `a`, `b`, `c` (all three) | `a`, `c` |
+| Detail view of the `es` submission | 200 | 404 |
+| Detail view of the `en` submission | 200 | 200 |
+
+The scoped builder reached the controllers with no controller override. Findings the table does not show:
+
+- A plain `app()->bind(Contract, Subclass)` fails, because the core builder needs a `Store` and the container cannot supply one. The binding must be a closure that passes the `form-submissions` store, as core's does.
+- The same builder serves the API, the `{{ form:submissions }}` tag and the forms index count, so the scope has to be conditioned on a Control Panel request and a non-super user. The probe conditioned on the current user only; a request-context condition is still to be designed.
+- The forms index count (`$form->querySubmissions()->count()`) would also be scoped, which is the intended behavior and avoids leaking other sites' counts.
+- The export was not requested. Without filters it reads `$form->submissions()`, which calls `FormSubmission::whereForm()`, which uses the same builder by reading the code; that is not a measurement.
+- Delete was not requested. It resolves its submission through `$form->submission($id)`, which calls the same `find()` the detail view uses.
