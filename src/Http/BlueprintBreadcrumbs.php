@@ -74,7 +74,7 @@ final class BlueprintBreadcrumbs
      */
     public static function openable(array $crumbs): array
     {
-        $refused = RefusedFormEditors::urls();
+        $refused = RefusedFormEditors::paths();
 
         $kept = [];
         foreach ($crumbs as $crumb) {

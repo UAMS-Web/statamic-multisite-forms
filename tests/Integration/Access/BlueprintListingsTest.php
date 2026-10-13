@@ -7,10 +7,12 @@ use Illuminate\Routing\Events\PreparingResponse;
 use Illuminate\Routing\Route;
 use Illuminate\Support\Collection;
 use Illuminate\Support\Facades\File;
+use Illuminate\Support\Facades\URL;
 use Inertia\Inertia;
 use Inertia\Response as InertiaResponse;
 use Inertia\Testing\AssertableInertia;
 use Statamic\Auth\File\User as UserObject;
+use Statamic\Facades\CommandPalette;
 use Statamic\Facades\Form as FormFacade;
 use Statamic\Forms\Form;
 use Symfony\Component\HttpFoundation\Request as SymfonyRequest;
@@ -242,3 +244,19 @@ function listingsProp(InertiaResponse $response): mixed
 
     return is_array($props) ? ($props[BlueprintListings::FORMS] ?? null) : null;
 }
+
+it('filters a palette cached under another host', function (): void {
+    $this->actingAs(blueprintsUser('es'));
+
+    // Core caches the palette per user with absolute links, built on the first host
+    app()->instance('request', Request::create('https://first.test/cp/command-palette'));
+    URL::forceRootUrl('https://first.test');
+    CommandPalette::build();
+    URL::forceRootUrl(null);
+
+    $items = $this->getJson('http://second.test/cp/command-palette')->assertOk()->json();
+
+    $forms = array_values(array_filter(array_column(is_array($items) ? $items : [], 'url'), static fn (mixed $url): bool => is_string($url) && str_contains($url, '/blueprints/forms/')));
+
+    expect($forms)->toBe(['https://first.test/cp/fields/blueprints/forms/spanish/edit']);
+});

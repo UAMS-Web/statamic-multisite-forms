@@ -25,9 +25,11 @@ use UAMSWeb\MultisiteForms\Access\RefusedFormEditors;
  * As with the editor's breadcrumb (#124), this listens for the response being
  * prepared, when the index is still an Inertia response and the palette still the
  * collection core's controller returned, and leaves out every form whose editor
- * the user may not open. The palette is cached per user, unfiltered; only the
- * response is filtered, so the cache needs no change. Core's controllers are
- * untouched, and every other response passes through.
+ * the user may not open. A listener cannot replace the response, so the palette
+ * is filtered in place; with a cache store that keeps objects rather than
+ * serializing them, such as the array store, that is the cached palette too,
+ * which then stays filtered for that user until core clears the cache. Core's
+ * controllers are untouched, and every other response passes through.
  */
 final class BlueprintListings
 {
@@ -78,7 +80,7 @@ final class BlueprintListings
      */
     public static function kept(array $items, string $key): array
     {
-        $refused = RefusedFormEditors::urls();
+        $refused = RefusedFormEditors::paths();
 
         return array_values(array_filter($items, static fn (mixed $item): bool => ! RefusedFormEditors::isRefused($item, $refused, $key)));
     }
