@@ -95,6 +95,29 @@ In Blade, fetch it, or use the tag pair as a component:
 
 The tag names the form the way `form:create` does: with `in`, `handle`, `is`, `form` or `formset`, or from a form in the template's context. Like Statamic's own `form:create` and `form:errors`, its name takes precedence over a form whose handle is `assigned` in the `{{ form:assigned }}` shorthand; render such a form with `{{ form:create in="assigned" }}`.
 
+## Forms seen from a site
+
+The add-on hands templates and the submit route a read-only view of a form for the page's site, a `UAMSWeb\MultisiteForms\Forms\SiteForm`. It carries the stored form's values and refuses to be saved or deleted. A submission made on the front end is built from that view, so `$submission->form()` in an event listener returns it.
+
+The view is always a subclass of Statamic's own `Statamic\Forms\Form`, whatever class your forms are stored as. Where a driver stores forms in its own class, such as `statamic/eloquent-driver`'s `Statamic\Eloquent\Forms\Form`, that class's methods are not on the view: `model()` throws, and an `instanceof` check against the driver's class is false. Reach them through `base()`, which returns the stored form in its own class:
+
+```php
+use Statamic\Events\FormSubmitted;
+use UAMSWeb\MultisiteForms\Forms\SiteForm;
+
+Event::listen(function (FormSubmitted $event) {
+    $form = $event->submission->form();
+
+    if ($form instanceof SiteForm) {
+        $form = $form->base();
+    }
+
+    $row = $form->model(); // the driver's own method
+});
+```
+
+`site()` on the view returns the handle of the site it was resolved for.
+
 ## Development
 
 ```sh

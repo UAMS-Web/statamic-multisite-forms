@@ -2,6 +2,8 @@
 
 declare(strict_types=1);
 
+use Statamic\Contracts\Forms\Form as FormContract;
+use Statamic\Facades\Form as FormFacade;
 use Statamic\Forms\Form;
 use UAMSWeb\MultisiteForms\Forms\FormResolver;
 use UAMSWeb\MultisiteForms\Forms\SiteForm;
@@ -83,4 +85,26 @@ it('leaves the base form unchanged when its view is changed', function (): void 
 
     expect($base->get('sites'))->toBe(['en', 'es'])
         ->and($base->title())->toBe('Contact');
+});
+
+it('reaches a driver form class through base(), not through the view', function (): void {
+    // A driver binds its own subclass of core's Form, as statamic/eloquent-driver does (#107)
+    $driverForm = new class extends Form
+    {
+        public function model(): string
+        {
+            return 'the stored row';
+        }
+    };
+    app()->bind(FormContract::class, $driverForm::class);
+
+    $base = FormFacade::make('contact');
+    $base->set('sites', ['en']);
+    $view = (new FormResolver)->resolve($base, 'en');
+
+    expect($base)->toBeInstanceOf($driverForm::class)
+        ->and($view)->not->toBeInstanceOf($driverForm::class)
+        ->and($view?->base())->toBe($base)
+        ->and($view?->base())->toBeInstanceOf($driverForm::class);
+    expect(fn () => $view?->model())->toThrow(BadMethodCallException::class);
 });
