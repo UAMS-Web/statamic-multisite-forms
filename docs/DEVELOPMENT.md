@@ -54,6 +54,19 @@ The Control Panel page `/cp/addons` was requested in process as a temporary supe
 
 `npm run build` writes the production build to `resources/dist`, which is committed. In the host, `php artisan vendor:publish --tag=statamic-multisite-forms --force` copies `resources/dist/build` to `public/vendor/statamic-multisite-forms/build`, and `statamic:install` does the same after a `composer update`. Measured on Windows 11: after publishing, the `/cp/addons` page (requested in process) references both `cp-<hash>.js` and `cp-<hash>.css` under `/vendor/statamic-multisite-forms/build/assets/`. `npm ci` needs `vendor/statamic/cms`, because `@statamic/cms` is a `file:` link into it, so run `composer install` first.
 
+## Editions can be added later
+
+The add-on is free with no editions (decision log, #17). Whether it can gain `["free", "pro"]` after a public tag without disturbing installs was measured in this host (#27), by pointing the path repository at a copy of the add-on without editions and then at one with `extra.statamic.editions` set to `["free", "pro"]`, each followed by `composer update` and a read of `Addon::get('uams-web/statamic-multisite-forms')`.
+
+| State | `editions()` | `edition()` |
+| --- | --- | --- |
+| No editions declared | empty | `null` |
+| `["free", "pro"]` declared, nothing configured in the host | `["free", "pro"]` | `"free"` |
+| `["free", "pro"]` declared, host config names `pro` | `["free", "pro"]` | `"pro"` |
+| No editions declared, host config names `pro` | empty | throws `Invalid edition [pro]` |
+
+So declaring editions later, with `free` first, leaves an install that never chose an edition on `free`: adding them is not breaking. The one failure is the host that names an edition for an add-on that declares none, which only a deliberate `config/statamic/editions.php` entry produces. `Addon::edition()` returns the configured edition, else the first declared one, which is why `free` must stay first. Measured on Windows 11 with `statamic/cms` v6.35.1 and PHP 8.4.20. The Marketplace side (whether the product's edition list must match at the first public tag) was not measured, since no product exists. macOS is not yet measured.
+
 ## Running the host-bound tests
 
 `tests/Feature/` holds tests that extend the host's `Tests\TestCase`. They are not part of `composer ci`: the package has no `Feature` suite and PHPStan excludes the directory, because `Tests\TestCase` does not exist in this package. From the host root:
