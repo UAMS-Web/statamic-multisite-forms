@@ -6,9 +6,20 @@
 #
 # One entry per package ecosystem. Minor and patch updates are grouped per entry, so a week
 # produces a few pull requests rather than one per package; a major update stays in a pull
-# request of its own. There is no package.json, so npm gets no entry.
+# request of its own. The npm entry covers the dev-only tooling behind the guard-script tests.
 version: 2
 updates:
+  - package-ecosystem: npm
+    directory: /
+    target-branch: main
+    schedule:
+      interval: weekly
+    groups:
+      npm-minor-and-patch:
+        update-types:
+          - minor
+          - patch
+
   - package-ecosystem: composer
     directory: /
     target-branch: main

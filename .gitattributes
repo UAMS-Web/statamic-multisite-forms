@@ -29,3 +29,8 @@
 /vendor/ export-ignore
 /patches/ export-ignore
 /patches.lock.json export-ignore
+/.npmrc export-ignore
+/package.json export-ignore
+/package-lock.json export-ignore
+/scripts/ export-ignore
+/vitest.config.js export-ignore

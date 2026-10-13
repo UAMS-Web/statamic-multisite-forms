@@ -83,7 +83,12 @@
     "scripts": {
         "test": "pest --testsuite=Unit,Integration",
         "stan": "phpstan analyse --no-progress --memory-limit=2G",
+        "test:scripts": [
+            "node scripts/check-no-emoji.mjs",
+            "npm run test:scripts"
+        ],
         "ci": [
+            "@test:scripts",
             "@test:pint",
             "@test:refactor",
             "@stan",
