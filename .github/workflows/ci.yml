@@ -13,6 +13,8 @@ name: CI
 # updating that ruleset's list in the same change: a renamed job leaves the old name pending
 # forever and blocks every pull request, and a new job is not required until it is listed.
 # Job names must stay unique across all workflows in this repository.
+# `check-required-checks.yml` compares the two lists and reports drift; see its header for the
+# order in which a job and its ruleset entry change.
 
 on:
   pull_request:
