@@ -11,6 +11,7 @@ use Statamic\Events\FormSubmitted;
 use Statamic\Events\SubmissionCreating;
 use Statamic\Providers\AddonServiceProvider;
 use UAMSWeb\MultisiteForms\Forms\ConfigFields;
+use UAMSWeb\MultisiteForms\Forms\NotAssigned;
 use UAMSWeb\MultisiteForms\Forms\RecordSubmitSite;
 use UAMSWeb\MultisiteForms\Http\SubmitGate;
 
@@ -49,6 +50,7 @@ class ServiceProvider extends AddonServiceProvider
      */
     public function bootAddon(): void
     {
+        NotAssigned::reportInvalidConfig();
         ConfigFields::register();
         SubmitGate::register($this->app->make(Router::class), $this->app->make(Kernel::class));
         Event::listen(FormSubmitted::class, [RecordSubmitSite::class, 'submitted']);
