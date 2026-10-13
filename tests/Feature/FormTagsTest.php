@@ -4,6 +4,7 @@ declare(strict_types=1);
 
 namespace UAMSWeb\MultisiteForms\Tests\Feature;
 
+use Illuminate\Contracts\View\Factory;
 use Illuminate\Log\Events\MessageLogged;
 use Illuminate\Routing\RouteCollection;
 use Illuminate\Support\Facades\Event;
@@ -42,7 +43,8 @@ final class FormTagsTest extends TestCase
         File::ensureDirectoryExists($this->directory.'/views');
         File::put(
             $this->directory.'/views/msf_form_probe.antlers.html',
-            '<main id="probe">{{ form:create in="msf_host_tags" }}<input name="message">{{ /form:create }}</main>',
+            '<main id="probe">{{ form:create in="msf_host_tags" }}<input name="message">{{ /form:create }}'
+            .'{{ form:submission in="msf_host_tags" }}<p>Thanks</p>{{ /form:submission }}</main>',
         );
         View::addLocation($this->directory.'/views');
 
@@ -83,14 +85,39 @@ final class FormTagsTest extends TestCase
         $this->assertSame([['form' => 'msf_host_tags', 'site' => 'es']], $warnings);
     }
 
-    /** Under `404`, the `es` page answers 404, not a view error. */
+    /** Under `404`, the `es` page answers with the site's 404 page in its layout, not a view error. */
     public function test_an_unassigned_form_answers_404_under_404(): void
     {
         config(['statamic-multisite-forms.not_assigned' => '404']);
+        $this->withoutVite();
         $this->makeForm(['en']);
 
-        $this->get('/es/msf-form-probe')->assertNotFound();
+        $this->get('/es/msf-form-probe')
+            ->assertNotFound()
+            ->assertSee('<!doctype html>', false)
+            ->assertSee('404 Page not found.');
         $this->get('/msf-form-probe')->assertOk()->assertSee(self::ACTION, false);
+    }
+
+    /**
+     * An error layout that renders the same form, as a shared layout would, still
+     * gives the 404 page rather than aborting again from inside it.
+     */
+    public function test_a_404_layout_that_renders_the_form_does_not_abort_again(): void
+    {
+        config(['statamic-multisite-forms.not_assigned' => '404']);
+        File::ensureDirectoryExists($this->directory.'/views/errors');
+        File::put(
+            $this->directory.'/views/errors/layout.antlers.html',
+            '<div id="error-layout">{{ form:create in="msf_host_tags" }}{{ /form:create }}{{ template_content }}</div>',
+        );
+        $this->makeForm(['en']);
+
+        $this->get('/es/msf-form-probe')
+            ->assertNotFound()
+            ->assertSee('<div id="error-layout">', false)
+            ->assertSee('404 Page not found.')
+            ->assertDontSee(self::ACTION, false);
     }
 
     /** A form with no sites renders on each site, as core does. */
@@ -109,8 +136,8 @@ final class FormTagsTest extends TestCase
     private function routeProbePages(): void
     {
         $probes = [
-            Route::middleware('web')->get('msf-form-probe', fn () => view('msf_form_probe')),
-            Route::middleware('web')->get('es/msf-form-probe', fn () => view('msf_form_probe')),
+            Route::middleware('web')->get('msf-form-probe', fn (): Factory|\Illuminate\Contracts\View\View => view('msf_form_probe')),
+            Route::middleware('web')->get('es/msf-form-probe', fn (): Factory|\Illuminate\Contracts\View\View => view('msf_form_probe')),
         ];
 
         $routes = new RouteCollection;

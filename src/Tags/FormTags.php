@@ -4,11 +4,11 @@ declare(strict_types=1);
 
 namespace UAMSWeb\MultisiteForms\Tags;
 
+use Statamic\Exceptions\NotFoundHttpException;
 use Statamic\Facades\Blink;
 use Statamic\Facades\Form as FormFacade;
 use Statamic\Forms\Form;
 use Statamic\Forms\Tags;
-use Symfony\Component\HttpKernel\Exception\NotFoundHttpException;
 use UAMSWeb\MultisiteForms\Forms\FormResolver;
 use UAMSWeb\MultisiteForms\Forms\NotAssigned;
 use UAMSWeb\MultisiteForms\Forms\SiteForm;
@@ -28,10 +28,15 @@ use UAMSWeb\MultisiteForms\Sites\RequestSite;
  * rather than render nothing. So the form is resolved here, from the base form
  * core finds, every time a tag asks for it.
  *
+ * `form:fields` is not gated: core's reads only the fields `form:create` hands
+ * it, so it renders nothing once `form:create` is gated.
+ *
  * Each tag returns whatever core's returns, which is wider than core's docblocks
- * say (`create` returns an array when the tag has no content), hence `mixed`; for
- * an unassigned form it returns a value that renders nothing: an empty string,
- * `false` for the tags core answers with a boolean, or an empty list.
+ * say (`create` returns an array when there is no parser to render its content,
+ * as through `Statamic::tag()`), hence `mixed`. For an unassigned form `create`
+ * returns an empty string, `errors` and `success` return `false`, `submission`
+ * returns null, and `submissions` returns an empty list, which a tag pair renders
+ * as it renders a form with no submissions.
  */
 class FormTags extends Tags
 {
@@ -43,16 +48,25 @@ class FormTags extends Tags
     protected static $handle = 'form';
 
     /**
+     * Set while the request is being aborted with a 404, so the error page,
+     * which may share a layout that renders the same form, does not abort again.
+     */
+    private const string ABORTING = 'multisite-forms.not-assigned.aborting';
+
+    /**
+     * Each handle this tag has resolved, with the site's view or null when the
+     * form is unassigned, so a render resolves a form once rather than per call.
+     *
+     * @var array<string, SiteForm|null>
+     */
+    private array $resolved = [];
+
+    /**
      * `{{ form:create }}`, and `{{ form:{handle} }}`, which core's `__call` renders through it.
      */
     public function create(): mixed
     {
         return $this->gated() ? '' : parent::create();
-    }
-
-    public function fields(): mixed
-    {
-        return $this->gated() ? '' : parent::fields();
     }
 
     public function errors(): mixed
@@ -71,7 +85,7 @@ class FormTags extends Tags
     public function submission(): mixed
     {
         if ($this->gated()) {
-            return [];
+            return null;
         }
 
         $submission = parent::submission();
@@ -94,9 +108,8 @@ class FormTags extends Tags
     protected function form(): ?SiteForm
     {
         $handle = $this->namedHandle();
-        $base = $handle === null ? null : $this->baseForm($handle);
 
-        return $base instanceof Form ? $this->resolve($base) : null;
+        return $handle === null ? null : $this->resolved($handle);
     }
 
     /**
@@ -109,14 +122,19 @@ class FormTags extends Tags
     private function gated(): bool
     {
         $handle = $this->namedHandle();
-        $base = $handle === null ? null : $this->baseForm($handle);
-        if ($handle === null || ! $base instanceof Form || $this->resolve($base) instanceof SiteForm) {
+        if ($handle === null || ! $this->baseForm($handle) instanceof Form || $this->resolved($handle) instanceof SiteForm) {
             return false;
         }
 
         $site = RequestSite::handle(app(RequestSite::class)->forPage());
 
         if (NotAssigned::fromConfig() === NotAssigned::NotFound) {
+            if (Blink::has(self::ABORTING)) {
+                return true;
+            }
+
+            Blink::put(self::ABORTING, true);
+
             throw new NotFoundHttpException("Form [{$handle}] is not assigned to site [{$site}].");
         }
 
@@ -151,8 +169,18 @@ class FormTags extends Tags
         return Blink::once("form-{$handle}", fn (): mixed => FormFacade::find($handle));
     }
 
-    private function resolve(Form $base): ?SiteForm
+    /**
+     * The site's view of the form with that handle, or null when it is unassigned or missing.
+     */
+    private function resolved(string $handle): ?SiteForm
     {
-        return app(FormResolver::class)->resolve($base, app(RequestSite::class)->forPage());
+        if (! array_key_exists($handle, $this->resolved)) {
+            $base = $this->baseForm($handle);
+            $this->resolved[$handle] = $base instanceof Form
+                ? app(FormResolver::class)->resolve($base, app(RequestSite::class)->forPage())
+                : null;
+        }
+
+        return $this->resolved[$handle];
     }
 }

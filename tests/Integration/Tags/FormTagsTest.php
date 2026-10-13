@@ -4,12 +4,15 @@ declare(strict_types=1);
 
 use Illuminate\Log\Events\MessageLogged;
 use Illuminate\Support\Facades\Event;
+use Statamic\Events\FormBlueprintFound;
+use Statamic\Exceptions\NotFoundHttpException;
 use Statamic\Facades\Blink;
 use Statamic\Facades\Site;
+use Statamic\Fields\Blueprint;
 use Statamic\Forms\Form;
+use Statamic\Forms\RenderableField;
 use Statamic\Forms\Tags as CoreFormTags;
 use Statamic\Tags\Loader;
-use Symfony\Component\HttpKernel\Exception\NotFoundHttpException;
 use UAMSWeb\MultisiteForms\Forms\NotAssigned;
 use UAMSWeb\MultisiteForms\Forms\SiteForm;
 use UAMSWeb\MultisiteForms\Tags\FormTags;
@@ -77,13 +80,15 @@ function formTag(string $method, array $params = ['in' => 'contact'], array $con
 
 /**
  * Core's own form tags, loaded directly, for comparison.
+ *
+ * @param  array<string, mixed>  $params
  */
-function coreFormTag(): CoreFormTags
+function coreFormTag(array $params = ['in' => 'contact']): CoreFormTags
 {
     $tag = new CoreFormTags;
     $tag->setProperties([
         'parser' => null,
-        'params' => ['in' => 'contact'],
+        'params' => $params,
         'content' => '',
         'context' => [],
         'tag' => 'form:create',
@@ -91,6 +96,31 @@ function coreFormTag(): CoreFormTags
     ]);
 
     return $tag;
+}
+
+/**
+ * The tag's data with each renderable field replaced by the HTML it renders, which
+ * is what a template outputs. The field objects themselves differ by design: each
+ * carries the site's view of the form rather than the base form.
+ *
+ * @return array<array-key, mixed>
+ */
+function rendered(mixed $data): array
+{
+    $walk = function (mixed $value) use (&$walk): mixed {
+        if (is_array($value)) {
+            return array_map($walk, $value);
+        }
+
+        return $value instanceof RenderableField ? $value->toHtml() : $value;
+    };
+
+    $walked = $walk($data);
+    if (! is_array($walked)) {
+        throw new RuntimeException('The form tag did not return data.');
+    }
+
+    return $walked;
 }
 
 /**
@@ -120,14 +150,28 @@ it("reads the not_assigned setting from the add-on's config, defaulting to empty
 
 it('renders an assigned form, or one with no sites, as core renders it', function (?array $sites): void {
     taggedForm($sites);
+    Event::listen(FormBlueprintFound::class, function (FormBlueprintFound $event): void {
+        $blueprint = $event->blueprint;
+        if (! $blueprint instanceof Blueprint) {
+            throw new RuntimeException('The form blueprint event carried no blueprint.');
+        }
 
-    $ours = formTag('create')->create();
+        $blueprint->setContents(['tabs' => ['main' => ['sections' => [['fields' => [
+            ['handle' => 'name', 'field' => ['type' => 'text', 'validate' => 'required']],
+        ]]]]]]);
+    });
+    $params = ['in' => 'contact', 'js' => 'alpine'];
+
+    $ours = formTag('create', $params)->create();
     Blink::flush();
-    $core = coreFormTag()->create();
+    $core = coreFormTag($params)->create();
 
-    // With no content, core's create returns the data a template would receive.
-    expect($ours)->toEqual($core)
-        ->and(data_get($ours, 'honeypot'))->toBe('trap');
+    // With no parser to render content, core's create returns the data a template would receive.
+    expect(rendered($ours))->toEqual(rendered($core))
+        ->and(data_get(rendered($ours), 'fields.0.field'))->toContain('name="name"')
+        ->and(data_get($ours, 'honeypot'))->toBe('trap')
+        ->and(data_get($ours, 'fields.0.handle'))->toBe('name')
+        ->and(data_get($ours, 'js_driver'))->toBe('alpine');
 })->with([
     "assigned to the page's site" => [['en']],
     'no sites' => [null],
@@ -151,10 +195,9 @@ it('renders nothing from every form tag for an unassigned form under empty', fun
     expect(formTag($method)->{$method}())->toBe($nothing);
 })->with([
     'create' => ['create', ''],
-    'fields' => ['fields', ''],
     'errors' => ['errors', false],
     'success' => ['success', false],
-    'submission' => ['submission', []],
+    'submission' => ['submission', null],
     'submissions' => ['submissions', []],
 ]);
 
@@ -187,7 +230,7 @@ it('logs one warning naming the form and the site, however often the form is ren
     $records = loggedRecords();
 
     formTag('create')->create();
-    formTag('fields')->fields();
+    formTag('errors')->errors();
 
     $warnings = array_values(array_filter($records->getArrayCopy(), fn (MessageLogged $record): bool => $record->level === 'warning'));
 
@@ -206,6 +249,19 @@ it('aborts with 404 for an unassigned form under 404', function (int|string $set
     'the string 404' => ['404'],
     'the integer 404' => [404],
 ])->throws(NotFoundHttpException::class, 'Form [contact] is not assigned to site [es].');
+
+it('renders nothing rather than aborting again while the 404 page renders the same form', function (): void {
+    config([NotAssigned::CONFIG_KEY => '404']);
+    taggedForm(['en']);
+    Site::setCurrent('es');
+
+    expect(fn (): mixed => formTag('create')->create())->toThrow(NotFoundHttpException::class)
+        ->and(formTag('create')->create())->toBe('');
+});
+
+it('leaves form:fields to core, which renders only what form:create hands it', function (): void {
+    expect(new ReflectionMethod(FormTags::class, 'fields')->getDeclaringClass()->getName())->toBe(CoreFormTags::class);
+});
 
 it('gates a form passed in from context, which core would put in its cache directly', function (): void {
     $form = taggedForm(['en']);

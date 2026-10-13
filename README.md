@@ -41,10 +41,12 @@ That writes `config/statamic-multisite-forms.php`. It has one setting.
 
 ### `not_assigned`
 
-What the `{{ form }}` tags (`form:create`, the `{{ form:contact }}` shorthand, `form:fields`, `form:errors`, `form:success`, `form:submission` and `form:submissions`) do with a form that is not assigned to the site the page is rendered for:
+What the `{{ form }}` tags (`form:create`, the `{{ form:contact }}` shorthand, `form:errors`, `form:success`, `form:submission` and `form:submissions`) do with a form that is not assigned to the site the page is rendered for:
 
-- `empty` (the default) renders nothing. A warning naming the form and the site is logged at `warning` level, once per form and site per request, so a shared layout that renders the form on every page logs one line per page view rather than one per tag.
-- `404` aborts the request with a 404.
+- `empty` (the default) renders nothing, and `form:submissions` renders as it does for a form with no submissions, so a `no_results` branch still shows. A warning naming the form and the site is logged at `warning` level, once per form and site per request, so a shared layout that renders the form on every page logs one line per page view rather than one per tag.
+- `404` aborts the request with the site's 404 page, as Statamic's `{{ 404 }}` tag does. If the 404 page's layout renders the same form, it renders nothing there rather than aborting again.
+
+`form:fields` inside `form:create` needs no gate of its own: it renders only the fields `form:create` hands it.
 
 A form assigned to the page's site, and a form with no sites, render as Statamic renders them. A submit to a form from a site it is not assigned to always answers 404, whatever `not_assigned` says.
 
