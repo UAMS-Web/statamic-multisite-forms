@@ -168,3 +168,15 @@ Oldest first, one entry per closed decision, so **a new entry is appended to the
 
 **Companion.** #54. Spec: `docs/SPEC.md`. Related: #40, #49.
 
+## 2026-10-13: Only users who cover every assigned site may edit a form (#42)
+
+**Decision.** A non-super user may edit a form's settings (its sites, base values and `site_overrides`) only when they can access every site the form is assigned to; for a global form, every site. The denial is the global `Gate::before()` already chosen in #54, applied to the `edit` ability. A form created by a user who does not cover every site is assigned to the sites they can access.
+
+**Why.** Base `title`, `email` and `store` reach every assigned site without an override row, so editing them changes other sites, and a scoped admin could otherwise reroute another site's email. Reusing the `Gate::before()` adds no new mechanism and avoids a save-time check, which would meet a trap in core: `FormsController::update()` reports "Saved" without checking whether `save()` succeeded. Single-site forms stay fully editable by their site's admins.
+
+**Rejected.** Any form admin edits everything (core's behavior): allows cross-site email rerouting. Per-site editing (own sites' rows and membership; base values only when covering all): the right refinement if shared-form friction proves real, but it needs per-field diffing at save time and a rejection the Control Panel can show, neither verified.
+
+**Cost and residual.** On a shared form a per-site admin cannot edit even their own site's row and needs a cross-site admin. A scoped admin can still view a shared form's settings; whether to deny viewing too is not decided. How the creation default is set is unmeasured.
+
+**Companion.** #42. Spec: `docs/SPEC.md`. Related: #54.
+
