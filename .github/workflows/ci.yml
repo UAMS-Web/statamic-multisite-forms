@@ -7,6 +7,13 @@ name: CI
 # longest one. When a job's command changes here, change the matching `composer`
 # script (and the other way round). The shared setup lives in
 # `.github/actions/setup/action.yml`.
+#
+# REQUIRED CHECKS. The organization ruleset "main: required checks
+# (statamic-multisite-forms)" requires every job's `name:` below, plus the `name:` of the two
+# pull-request-body workflows, by that exact string. Renaming or adding a job here means
+# updating that ruleset's list in the same change: a renamed job leaves the old name pending
+# forever and blocks every pull request, and a new job is not required until it is listed.
+# Job names must stay unique across all workflows in this repository.
 
 on:
   pull_request:
