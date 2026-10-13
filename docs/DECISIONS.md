@@ -180,3 +180,15 @@ Oldest first, one entry per closed decision, so **a new entry is appended to the
 
 **Companion.** #42. Spec: `docs/SPEC.md`. Related: #54.
 
+## 2026-10-13: The first release scopes by site access only; a Site filter follows (#41)
+
+**Decision.** The first release offers no site selector: editors see forms and submissions for the sites they can access, and nothing narrows that further. The next step is a Site filter on the Control Panel submissions listing (#58).
+
+**Why.** Isolation is complete by access, so a selector is a convenience for users with several sites, not part of the protection. The cheapest selector is a core filter class declared `visibleTo('form-submissions')`, which core's listing and export already apply through `queryFilters()`; it needs no Vue change. That was read in `statamic/cms` v6.35.1 and not exercised, so it follows as its own ticket rather than gating the first release.
+
+**Rejected.** Shipping the Site filter in the first release: reasonable, but unexercised. A switcher that follows the Control Panel's selected site (`Site::selected()`): it needs changes to core's Vue pages, the upgrade-fragile surface the spec avoids.
+
+**Cost.** Until #58 ships, a user with access to several sites sees their submissions mixed in one listing.
+
+**Companion.** #41. Follow-up: #58. Spec: `docs/SPEC.md`.
+

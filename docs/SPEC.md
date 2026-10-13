@@ -114,7 +114,7 @@ No Control Panel view is replaced.
 - **`configure forms` does not bypass the scope.** A non-super user with `configure forms` is scoped to their accessible sites like any other non-super user, for forms and submissions (#54). Only super users see every site. This narrows what core allows that permission, and the release notes say so.
 - **Editing a form.** A non-super user may edit a form's settings only when they can access every site it is assigned to (every site, for a global form), because base values reach every site without an override row (#42). The check is the same global `Gate::before()` on the `edit` ability, so a scoped admin cannot reroute another site's email. A form created by a user who does not cover every site is assigned to the sites they can access, so they can still edit it.
 - **Permissions.** No new keys. Per-site access is the intersection of a core form permission and a core site permission, so an administrator already has the controls. This differs from per-form-per-site keys on purpose: it is less expressive and far less to keep correct. If per-form-per-site grants are demanded, they are an addition.
-- **Site selector.** Core's Control Panel already tracks a selected site. Making the forms index filter by the *selected* site, instead of by access, needs UI and is deferred.
+- **Site selector.** Not in the first release (#41): isolation is complete by access alone. The next step is a **Site** filter on the submissions listing (#58), a core filter class declared `visibleTo('form-submissions')` that the export reuses, so it needs no Vue change. A switcher following the Control Panel's selected site (`Site::selected()`) needs changes to core's Vue pages and is deferred until there is demand.
 
 ## Events
 
@@ -155,7 +155,7 @@ Each phase ends with a host-bound test run in `statamic-multisite-forms-host` (`
 
 - [ ] Default for `not_assigned`: `empty` with a warning (proposed) or `404`.
 - [x] Who sees unattributed submissions. Decided: only users who can access every site the form is assigned to (#40, `docs/DECISIONS.md`).
-- [ ] Is access-based scoping (proposed) enough for the first release, or is a selected-site filter on the forms index required?
+- [x] Whether the first release needs more than access-based scoping. Decided: access only; a Site filter on the submissions listing follows as #58 (#41, `docs/DECISIONS.md`).
 - [x] Whether `configure forms` bypasses the site scope. Decided: it does not; only super users do (#54, `docs/DECISIONS.md`).
 - [x] Who may assign a form to sites and edit its settings. Decided: only users who can access every assigned site; a scoped admin's new form is assigned to their sites (#42, `docs/DECISIONS.md`).
 - [x] Submissions as a flat store with `_site` or a folder per site. Decided: flat store with `_site` (#43, `docs/DECISIONS.md`).
