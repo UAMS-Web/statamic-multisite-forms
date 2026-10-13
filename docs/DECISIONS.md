@@ -112,3 +112,13 @@ Oldest first, one entry per closed decision, so **a new entry is appended to the
 
 **Companion.** #15.
 
+## 2026-10-12: The add-on is free with no editions (#17)
+
+**Decision.** The add-on is free, declares no `extra.statamic.editions`, and stays MIT (#13). Nothing is submitted to Packagist or the Statamic Marketplace by this decision; submitting remains a separate operator decision.
+
+**Why.** `src/` has no logic yet, so there is nothing to put behind a paid edition. Declaring `["free", "pro"]` now would commit edition handles to the Marketplace, where they must match and the first one is the default, for a Pro edition with nothing in it. Going free first is expected to leave a later move to editions non-breaking, since `free` listed first stays the default for installs that never chose one; that is an inference and is checked in #27.
+
+**Rejected.** Declaring `free` and `pro` now: handles committed before any Pro feature exists. Paid from the start: needs bank details, a license rework away from MIT and an institutional sign-off. A free tier plus paid Pro: the costs of paid, and needs features to put behind Pro.
+
+**Companion.** #17. Follow-ups: #25 (README), #26 (submission checklist), #27 (editions can be added later).
+
