@@ -47,7 +47,7 @@ final class SitesConfigSectionTest extends TestCase
         parent::tearDown();
     }
 
-    /** The settings screen carries a Sites section holding the `sites` field. */
+    /** The settings screen carries a Sites section holding the `sites` field and the overrides grid (#76). */
     public function test_the_settings_screen_shows_the_sites_section(): void
     {
         $response = $this->get(cp_route('forms.edit', 'msf_host_contact'))->assertOk();
@@ -64,7 +64,7 @@ final class SitesConfigSectionTest extends TestCase
             }
         }
 
-        $this->assertSame(['sites' => 'sites'], $fields);
+        $this->assertSame(['sites' => 'sites', 'site_overrides' => 'grid'], $fields);
     }
 
     /** Saving a selection writes it to the form file, and clearing it removes the key. */

@@ -114,7 +114,20 @@ it('keeps the base value for a blank or wrongly typed row value', function (stri
     'empty email list' => ['email', [], BASE_EMAIL],
     'email as a string' => ['email', 'es@example.com', BASE_EMAIL],
     'null store' => ['store', null, true],
-    'store as a string' => ['store', 'false', true],
+    'store as another string' => ['store', 'no', true],
+    'store as a number' => ['store', 0, true],
+]);
+
+it('reads the store value the editor saves as well as a boolean (#76)', function (bool $base, mixed $value, bool $expected): void {
+    $form = overriddenForm([['site' => 'es', 'store' => $value]]);
+    $form->store($base);
+
+    expect(overriddenView($form, 'es')->store())->toBe($expected);
+})->with([
+    'the editor\'s "true" over a form that does not store' => [false, Overrides::STORE, true],
+    'the editor\'s "false" over a form that stores' => [true, Overrides::DO_NOT_STORE, false],
+    'true over a form that does not store' => [false, true, true],
+    'false over a form that stores' => [true, false, false],
 ]);
 
 it('resolves from the first row for a site that has two', function (): void {
