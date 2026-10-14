@@ -1,30 +1,32 @@
 # Packagist and Marketplace submission checklist
 
-Nothing on this page has been done. No Packagist registration, seller account, product or release exists, and the decision to submit has not been made. This is the list of real-world steps, written down so they are known before they are needed. The add-on is free with no editions and MIT licensed (decision log, #17).
+The package is on Packagist; the Statamic Marketplace steps have not been started. This is the list of real-world steps, with the done ones marked so the rest are known before they are needed. The add-on is free with no editions and MIT licensed (decision log, #17).
 
 Each step is marked **Person** when it needs someone with an account, or **Repo** when it is a change here.
 
 ## Before anything is submitted
 
-1. **Repo.** The README describes only what exists, and the features it lists are real. #163 rewrote *Status* and *What it does* to describe what ships; check it again before submitting.
+1. **Repo.** The README describes only what exists, and the features it lists are real. #163 rewrote *Status* and *What it does* to describe what ships, and #183 added what the Marketplace guidelines ask for (below); check it again before submitting to the Marketplace.
 2. **Repo.** `composer.json` is complete for a public package: `name`, `description`, `keywords`, `type` of `statamic-addon`, `license`, `authors`, `support`, `autoload`, `extra.statamic` (`name`, `description`) and `extra.laravel.providers`. A test (`tests/Unit/SubmissionReadinessTest.php`) pins these.
 3. **Repo.** The built Control Panel assets are committed (`resources/dist`) and the `Built assets` job is green, because a Composer install does not run npm.
-4. **Person.** Record the decision to submit as a comment on #26, made by the operator. This is the gate: no later step starts before it.
+4. **Person.** The operator decides to submit. Done for Packagist on 2026-10-14, recorded on #185; the Marketplace needs its own decision.
 
-## Packagist
+## Packagist (done)
 
-5. **Person.** Sign in to packagist.org and submit `https://github.com/UAMS-Web/statamic-multisite-forms`. The package becomes `uams-web/statamic-multisite-forms`, from `composer.json`.
-6. **Person.** Confirm Packagist updates when a tag is pushed (its GitHub integration or an update hook on the repository). Until it does, new tags do not appear.
+5. **Person.** Done 2026-10-14: the package is [`uams-web/statamic-multisite-forms`](https://packagist.org/packages/uams-web/statamic-multisite-forms).
+6. **Person.** Done: the repository's Packagist webhook sends push events, so a pushed tag appears on Packagist without a manual update.
 
-## First release
+## First release (done)
 
-7. **Person.** Cut the first tag per the `cutting-releases` rule and the `writing-release-notes` skill, on the operator's authorization. The Marketplace lists versions from tags, so a package with no tag has nothing to list.
+7. **Person.** Done: `v0.1.0` was tagged on 2026-10-12, and releases follow the `cutting-releases` rule and the `writing-release-notes` skill. The Marketplace lists versions from tags.
 
 ## Statamic Marketplace
 
+Statamic's [submission guidelines](https://statamic.com/marketplace/submission-guidelines) apply to free products too. Before step 8, run the `marketplace-review` skill (`.claude/skills/marketplace-review/`) against the release being submitted, and fix what it finds.
+
 8. **Person.** Create a statamic.com seller account (`https://statamic.com/creator/begin`). Decide whether it is personal or institutional before creating it.
 9. **Person.** Bank details: the guide ties these to charging for an add-on, so a free listing is expected not to need them. Unverified.
-10. **Person.** In the seller dashboard, create a product linked to the Packagist package, with a price of zero and a description. Products start as drafts and can be previewed before publishing.
+10. **Person.** In the seller dashboard, create a product linked to the Packagist package, with a price of zero, a description, and screenshots of the Sites field and the override rows (the guidelines' Rule 10 accepts a usage example instead, which the README's quick start gives). Products start as drafts and can be previewed before publishing.
 11. **Person.** Publish the product only when the operator says so. Once published, the add-on appears on the Marketplace and in the Control Panel's Addons area.
 
 ## Unverified
@@ -35,4 +37,4 @@ Each step is marked **Person** when it needs someone with an account, or **Repo*
 
 ## Source
 
-Statamic's guide, Building an Addon (Marketplace Submission and Editions). The Marketplace and editions pages themselves could not be retrieved when this was written, so the steps above follow the guide's summary and are to be re-read against the live seller dashboard before step 4.
+Statamic's guide, Building an Addon (Marketplace Submission and Editions), and the marketplace submission guidelines (revision 2026-09-14). Re-read the steps above against the live seller dashboard before step 8.
