@@ -41,6 +41,7 @@
 /tests/ export-ignore
 /vendor/ export-ignore
 /patches/ export-ignore
+/patches.json export-ignore
 /patches.lock.json export-ignore
 /.npmrc export-ignore
 /package.json export-ignore

@@ -510,3 +510,13 @@ The adversarial review of this change found an older gap in the id rule, reprodu
 **Residual.** Reference moved to the wiki cannot be found through a web search while the repository is below 500 stars. Until #163 lands, Home links the README sections that hold it.
 
 **Companion.** #166; the move in #163. Earlier decision: #156.
+
+## 2026-10-14: The development patches are declared in a root-only `patches.json` (#178)
+
+**Decision.** The seven `pest-plugin-mutate` patches are declared in `patches.json` at the repository root, not under `extra.patches` in `composer.json`. The 2026-10-11 decision to carry them is unchanged.
+
+**Why.** Composer copies a package's `extra` block into each host's `composer.lock`, and `cweagans/composer-patches` 2.0.0's `Dependencies` resolver applies `extra.patches` from every package there, so a host running that plugin alongside `pest-plugin-mutate` would try to apply this repository's patches, from a `patches/` directory the dist archive does not contain. The resolver has no path for a dependency's `patches.json`, so the root file stays this repository's own. This is the package form the `upstream-patch-lifecycle` skill prescribes, and it clears the way to publishing on Packagist.
+
+**Rejected.** Keeping `extra.patches` and asking hosts to set `ignore-dependency-patches`: every host would have to know to do it, and one that did not would fail to install. Shipping `patches/` in the dist archive: the patches would then apply to a host's plugin, which is worse than failing.
+
+**Companion.** #178; the `upstream-patch-lifecycle` skill.

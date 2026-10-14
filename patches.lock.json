@@ -1,5 +1,5 @@
 {
-    "_hash": "dfff19d93da0c5ecadfa2614f1b4c438c891f21c3b836d923542e4ccb0ca6543",
+    "_hash": "90d73c38d97046950a5c0ab5f10116be246c316e792c5d8ccdc9a6e9e330afeb",
     "patches": {
         "pestphp/pest-plugin-mutate": [
             {
@@ -9,7 +9,7 @@
                 "sha256": "7a6c762ea7a0eaf0043f251a76fec8bb48f2bf6dd062e684a989b592e670ebbc",
                 "depth": 1,
                 "extra": {
-                    "provenance": "root"
+                    "provenance": "patches-file:patches.json"
                 }
             },
             {
@@ -19,7 +19,7 @@
                 "sha256": "6e0994c0bfa9a637a90efccfb14b3c37831b76bd39d57f826ac18aeaf2a57915",
                 "depth": 1,
                 "extra": {
-                    "provenance": "root"
+                    "provenance": "patches-file:patches.json"
                 }
             },
             {
@@ -29,7 +29,7 @@
                 "sha256": "2d3d2cebd7d0d6ef642c6e1c64ddce866d018e1bdec235df57b8a00f988a6341",
                 "depth": 1,
                 "extra": {
-                    "provenance": "root"
+                    "provenance": "patches-file:patches.json"
                 }
             },
             {
@@ -39,7 +39,7 @@
                 "sha256": "538ba0225a9ed22a1cb01483ddc62dffb41f2f220d4629333ba7caaf052026b7",
                 "depth": 1,
                 "extra": {
-                    "provenance": "root"
+                    "provenance": "patches-file:patches.json"
                 }
             },
             {
@@ -49,7 +49,7 @@
                 "sha256": "ba601a0b09bbcbb2cad20820479c89fc55861158e15677fc85fa3ac3004f3358",
                 "depth": 1,
                 "extra": {
-                    "provenance": "root"
+                    "provenance": "patches-file:patches.json"
                 }
             },
             {
@@ -59,7 +59,7 @@
                 "sha256": "5519d00dce1e8bd364c28c208997e57619242f39733d04f953fba9d0708d1c62",
                 "depth": 1,
                 "extra": {
-                    "provenance": "root"
+                    "provenance": "patches-file:patches.json"
                 }
             },
             {
@@ -69,7 +69,7 @@
                 "sha256": "b999bc57c3eb43da339e37e7781f3f1d479481dc6f82c5b388775f1083b5043c",
                 "depth": 1,
                 "extra": {
-                    "provenance": "root"
+                    "provenance": "patches-file:patches.json"
                 }
             }
         ]
