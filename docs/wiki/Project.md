@@ -6,6 +6,8 @@ Where to report a problem, how releases work, and where the development notes li
 
 Open an issue in the [issue tracker](https://github.com/UAMS-Web/statamic-multisite-forms/issues/new/choose), choosing **Bug** for something that behaves incorrectly. Say which release you run, your Statamic version, and what you saw: a log line or error message quoted exactly, or the page and site where it happened. [Troubleshooting](Troubleshooting.md) may already name the cause.
 
+Support is community support through the issue tracker; there is no paid support.
+
 ## Releases
 
 Releases are listed on the [releases page](https://github.com/UAMS-Web/statamic-multisite-forms/releases), each with notes grouped into what is new, fixed, security and maintenance, and any breaking change called out first.

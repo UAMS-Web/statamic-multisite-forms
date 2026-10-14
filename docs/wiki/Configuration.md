@@ -25,6 +25,8 @@ The setting is checked each time the add-on boots, for every request and `artisa
 
 A form assigned to the page's site, and a form with no sites, render as Statamic renders them. A submit to a form from a site it is not assigned to always answers 404, whatever `not_assigned` says.
 
+A submit's site is the site whose URL the request's referrer falls under, or the default site when there is none, the same rule Statamic uses to choose a submission's email locale. That site decides the 404, the site recorded on the submission, and the site's overrides. The referrer is sent by the browser, so this decides which forms a site offers and accepts; it does not stop someone who crafts a request from submitting as any site the form is assigned to.
+
 ### Fetching `form:create` without a template
 
 Fetched with no template to render, as `Statamic::tag('form:create')->params(['in' => 'contact'])->fetch()` does in Blade or PHP, `form:create` returns the form's data as an array, as Statamic's does. Under `empty`, an unassigned form returns an empty array instead, so guard the markup that reads it:

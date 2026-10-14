@@ -6,7 +6,7 @@ The documentation is in the [wiki](https://github.com/UAMS-Web/statamic-multisit
 
 ## Status
 
-Early development: releases are 0.x pre-releases, and the package is not on Packagist yet. Everything under "What it does" ships today. It is free, has no editions, and is licensed under MIT.
+Early development: releases are 0.x pre-releases, and the package is not on Packagist yet. Until 1.0.0, a minor release (0.6 to 0.7) can carry a breaking change; its release notes call it out first, with the action to take. Everything under "What it does" ships today. It is free, has no editions, and is licensed under MIT. What 1.0.0 waits on is listed in [#180](https://github.com/UAMS-Web/statamic-multisite-forms/issues/180).
 
 ## What it does
 
@@ -19,16 +19,19 @@ Early development: releases are 0.x pre-releases, and the package is not on Pack
 
 - PHP 8.4 or later
 - Statamic (`statamic/cms`) 6.35 or later, in a multisite install
+- Statamic Pro, which Statamic requires for more than one site: without it, a multisite install stops with `Statamic Pro is required to use multiple sites.` The add-on itself needs no license.
 - Submissions in Statamic's flat files, or in a database through `statamic/eloquent-driver`. The database driver is verified on SQLite, MySQL 9.7.2 and PostgreSQL 18.0; MariaDB is not verified yet.
 
 ## Installation
 
-The package is not published on Packagist yet, so it cannot be installed with a plain `composer require`. Until it is, add the repository to the host's `composer.json` and require it from there:
+The package is not published on Packagist yet, so it cannot be installed with a plain `composer require`. Until it is, add the repository to the host's `composer.json` and require a tagged release from there:
 
 ```sh
 composer config repositories.multisite-forms vcs https://github.com/UAMS-Web/statamic-multisite-forms
-composer require uams-web/statamic-multisite-forms:@dev
+composer require uams-web/statamic-multisite-forms:^0.6
 ```
+
+`^0.6` stays on 0.6 releases, so a breaking 0.7 is never installed by a `composer update`. No build step is needed: the Control Panel assets ship built.
 
 Statamic discovers the add-on from the package, and it appears under Addons in the Control Panel. After a later `composer update`, `php artisan statamic:install` publishes its assets.
 
@@ -55,6 +58,18 @@ It decides what the form tags do with a form that is not assigned to the page's 
 3. To give one site its own title, recipients or store setting, add a row under **Site overrides** in the same section.
 
 New submissions record their site, and editors limited to some sites see only those sites' submissions.
+
+## External requests
+
+None. The add-on calls no outside service and collects no data. A form's emails go only to the recipients its settings, or a site's override row, name.
+
+## Changelog
+
+Each release's notes are on the [releases page](https://github.com/UAMS-Web/statamic-multisite-forms/releases), with any breaking change first.
+
+## Support
+
+Community support through the [issue tracker](https://github.com/UAMS-Web/statamic-multisite-forms/issues); there is no paid support. [Troubleshooting](https://github.com/UAMS-Web/statamic-multisite-forms/wiki/Troubleshooting) covers the problems met so far.
 
 ## Development
 
