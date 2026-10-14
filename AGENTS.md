@@ -24,6 +24,10 @@ A Statamic add-on (`uams-web/statamic-multisite-forms`, namespace `UAMSWeb\Multi
 - Tests run in parallel workers, so a test must not share mutable state with another: no fixed file paths, cache keys or Stache/form storage directories. Give each worker its own directory (`ParallelTesting::token()` or `uniqid()`) when a test writes files.
 - The static-analysis cache lives in `storage/phpstan` (git-ignored).
 
+### Repository skills
+
+- [`github-wiki`](.claude/skills/github-wiki/SKILL.md): planning, writing and publishing the GitHub wiki. It belongs to this repository; the sync leaves it alone.
+
 <!-- uams-claude-skills:begin -->
 ## Shared skills and rules
 
