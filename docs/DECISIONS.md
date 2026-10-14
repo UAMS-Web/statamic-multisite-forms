@@ -520,3 +520,13 @@ The adversarial review of this change found an older gap in the id rule, reprodu
 **Rejected.** Keeping `extra.patches` and asking hosts to set `ignore-dependency-patches`: every host would have to know to do it, and one that did not would fail to install. Shipping `patches/` in the dist archive: the patches would then apply to a host's plugin, which is worse than failing.
 
 **Companion.** #178; the `upstream-patch-lifecycle` skill.
+
+## 2026-10-14: Releases stay on 0.x until the add-on has run in production with a stable surface (#180)
+
+**Decision.** Releases stay 0.x pre-releases, and the package goes to Packagist on 0.x. 1.0.0 is cut when #180's criteria are met: 30 consecutive days on a production UAMS Statamic site with no change to a stored key (`sites`, `site_overrides`, `_site`), a config key or a public class signature, no open behavior bug, the host-bound suite passing on macOS, and `statamic/eloquent-driver` either measured or named as unsupported. That release adds nothing beyond the version.
+
+**Why.** 1.0.0 promises the public surface until a 2.0.0, and the stored keys are the costliest part of it to change, since they sit in other repositories' content files and a change to one needs a migration. Every check so far has run against the test suites and the Herd host, and macOS and the Eloquent driver are open residuals of earlier entries. Packagist does not need 1.0.0: Composer serves 0.x tags normally, and a `^0.6` constraint already holds an install to one minor.
+
+**Rejected.** 1.0.0 at the Packagist listing: it would promise a surface no production site has exercised, and the first change to a stored key would force a 2.0.0. Leaving the bar unstated: 1.0.0 would then wait on a judgment nobody recorded, and nothing would say when the add-on had earned it.
+
+**Companion.** #180, which carries the criteria as its acceptance list.
