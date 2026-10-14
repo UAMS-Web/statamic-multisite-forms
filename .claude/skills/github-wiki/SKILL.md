@@ -124,16 +124,15 @@ Measured on `UAMS-Web/statamic-multisite-forms`'s wiki, 2026-10-13, from the pub
 
 - **`#123` is not autolinked** on a wiki page; it renders as plain text.
 - **A custom `_Sidebar.md` appears beside the generated page list**, not in place of it.
-- **Headings get anchors** (`id="user-content-<slug>"`, with the slug GitHub uses for READMEs), so `Page#heading` links have a target.
+- **Headings get anchors** (`id="user-content-<slug>"`, with the slug GitHub uses for READMEs), so `Page#heading` links have a target. A `#heading` link scrolls to it: the link names `#<slug>` and GitHub's script maps it to the prefixed anchor. Observed on mobile, on Troubleshooting's list of links, 2026-10-13; desktop and links from another page are presumed to behave the same. A browser-automation tab whose page is hidden cannot test this: it does not scroll even on a README anchor.
 - **`antlers` and `blade` code blocks are highlighted**, with Statamic's and Blade's grammars (`highlight-text-html-statamic`, `highlight-text-html-php-blade`), measured on a later publish (run `38493584234`).
 - **`README.md#heading` is not rewritten to Home** (see step 3 above), and the missing page it names redirects to Home.
 
 Still open, to settle on the first page that needs each and record here:
 
-1. Whether a `Page#heading` link from another page scrolls to the heading in a browser. The anchors exist in the server HTML; the scroll was not observed.
-2. Whether GitHub shows an outline of a page's headings. Nothing in the server HTML shows one; it may be drawn by script. If it exists, only Troubleshooting needs its own list of links.
-3. Whether images under `images/` render through a relative link.
-4. Whether GitHub alert blocks (`> [!NOTE]`) render on wiki pages; until then the page shapes use bold *Note* and *Warning* paragraphs.
+1. Whether GitHub shows an outline of a page's headings. Nothing in the server HTML shows one; it may be drawn by script. If it exists, only Troubleshooting needs its own list of links.
+2. Whether images under `images/` render through a relative link.
+3. Whether GitHub alert blocks (`> [!NOTE]`) render on wiki pages; until then the page shapes use bold *Note* and *Warning* paragraphs.
 
 ## Avoid
 
