@@ -37,7 +37,7 @@ Verified against GitHub's documentation:
 - **Only the default branch is published**, and a wiki takes no pull requests. Every edit is a commit, with history, a side-by-side comparison of two revisions, and a revert.
 - **Unsupported markup:** transclusion, definition lists, indentation and a table-of-contents directive.
 - **Images:** PNG, JPEG or GIF, referenced by URL. `<img src="..." width="400">` sets a size, which Markdown image syntax cannot (reported on Stack Overflow).
-- **Editing permission:** by default only people with write access can edit. On a public repository, *Restrict editing to collaborators only* under *Settings*, *Features* controls whether anyone with an account can. Its state cannot be read through the REST API, so check it in the browser.
+- **Editing permission:** by default only people with write access can edit. On a public repository, a checkbox under *Settings*, *Features* controls whether anyone with an account can, and it is the restriction the search-indexing rule asks for. Its label depends on who owns the repository: *Restrict editing to collaborators only* on a personal account, *Restrict editing to users in teams with push access only* on an organization (seen checked on `UAMS-Web/statamic-multisite-forms`, 2026-10-13). Its state cannot be read through the REST API, so check it in the browser.
 - **Disabling the wiki hides its pages without deleting them**, and enabling it again restores them.
 - **Soft limit:** 5,000 files.
 
