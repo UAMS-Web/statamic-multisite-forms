@@ -530,3 +530,13 @@ The adversarial review of this change found an older gap in the id rule, reprodu
 **Rejected.** 1.0.0 at the Packagist listing: it would promise a surface no production site has exercised, and the first change to a stored key would force a 2.0.0. Leaving the bar unstated: 1.0.0 would then wait on a judgment nobody recorded, and nothing would say when the add-on had earned it.
 
 **Companion.** #180, which carries the criteria as its acceptance list.
+
+## 2026-10-14: The Statamic Marketplace listing waits for v1.0.0 (#187)
+
+**Decision.** The add-on is listed on the Statamic Marketplace only after v1.0.0 is released. Packagist, where it was listed on 2026-10-14 (#185), is how it is installed until then. #187 carries the listing steps and is blocked by #180.
+
+**Why.** Packagist serves anyone who already knows the package and pins a version. The Marketplace offers the add-on to site owners browsing for one, and they are the readers least likely to read a 0.x warning or to expect a breaking minor release. The 1.0.0 criteria (#180) are the point at which the stored keys, config keys and public classes are promised, so they are also the point at which the add-on is ready to be offered to them.
+
+**Rejected.** Listing now on 0.x: the Marketplace guidelines accept a labeled pre-release (Rule 06), but sites found through the listing would build on stored keys that no production site has yet exercised, and a change to one needs a migration in each of their content repositories. Leaving the timing unstated: `docs/SUBMISSION.md` would read as a list of next steps, and a later session could start them.
+
+**Companion.** #187; `docs/SUBMISSION.md`.

@@ -1,6 +1,6 @@
 # Packagist and Marketplace submission checklist
 
-The package is on Packagist; the Statamic Marketplace steps have not been started. This is the list of real-world steps, with the done ones marked so the rest are known before they are needed. The add-on is free with no editions and MIT licensed (decision log, #17).
+The package is on Packagist; the Statamic Marketplace listing waits for v1.0.0 (#187). This is the list of real-world steps, with the done ones marked so the rest are known before they are needed. The add-on is free with no editions and MIT licensed (decision log, #17).
 
 Each step is marked **Person** when it needs someone with an account, or **Repo** when it is a change here.
 
@@ -9,7 +9,7 @@ Each step is marked **Person** when it needs someone with an account, or **Repo*
 1. **Repo.** The README describes only what exists, and the features it lists are real. #163 rewrote *Status* and *What it does* to describe what ships, and #183 added what the Marketplace guidelines ask for (below); check it again before submitting to the Marketplace.
 2. **Repo.** `composer.json` is complete for a public package: `name`, `description`, `keywords`, `type` of `statamic-addon`, `license`, `authors`, `support`, `autoload`, `extra.statamic` (`name`, `description`) and `extra.laravel.providers`. A test (`tests/Unit/SubmissionReadinessTest.php`) pins these.
 3. **Repo.** The built Control Panel assets are committed (`resources/dist`) and the `Built assets` job is green, because a Composer install does not run npm.
-4. **Person.** The operator decides to submit. Done for Packagist on 2026-10-14, recorded on #185; the Marketplace needs its own decision.
+4. **Person.** The operator decides to submit. Done for Packagist on 2026-10-14, recorded on #185. For the Marketplace, the decision is to submit once v1.0.0 is released (decision log, 2026-10-14; #187).
 
 ## Packagist (done)
 
@@ -22,7 +22,7 @@ Each step is marked **Person** when it needs someone with an account, or **Repo*
 
 ## Statamic Marketplace
 
-Statamic's [submission guidelines](https://statamic.com/marketplace/submission-guidelines) apply to free products too. Before step 8, run the `marketplace-review` skill (`.claude/skills/marketplace-review/`) against the release being submitted, and fix what it finds.
+None of these steps starts before v1.0.0 is released (#180); #187 tracks them. Statamic's [submission guidelines](https://statamic.com/marketplace/submission-guidelines) apply to free products too. Before step 8, run the `marketplace-review` skill (`.claude/skills/marketplace-review/`) against the release being submitted, and fix what it finds.
 
 8. **Person.** Create a statamic.com seller account (`https://statamic.com/creator/begin`). Decide whether it is personal or institutional before creating it.
 9. **Person.** Bank details: the guide ties these to charging for an add-on, so a free listing is expected not to need them. Unverified.
