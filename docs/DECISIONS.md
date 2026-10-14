@@ -498,3 +498,15 @@ The adversarial review of this change found an older gap in the id rule, reprodu
 **Residual.** An edit made in the browser is lost at the next publish without warning; the footer of every page says where to edit instead. The first publish settled four platform behaviors and left five open; `.claude/skills/github-wiki/SKILL.md` lists both, and the guide tickets settle the rest as their pages need them.
 
 **Companion.** #156; skill in #152 and #154; guides in #157 to #163; a shared skill in `UAMS-Web/uams-claude-skills#172`.
+
+## 2026-10-13: The wiki holds the reference too, and the README becomes an overview (#166)
+
+**Decision.** The README holds an overview and getting started: what the add-on does, its status, requirements, installation, a short quick start and a link to the wiki, with the development notes and the license. The wiki holds everything long-form: the reference for settings, tags, the attribute command, permissions and the API filter, as well as the walkthrough, guides, troubleshooting and project links. Where the wiki needs installation, it links the README. This supersedes the README half of #156's decision; publishing from `docs/wiki/` with github-wiki-action is unchanged. #163 moves the reference.
+
+**Why.** GitHub's documentation describes the README as the place to say what a project does and how to get started, and the wiki as the place for long-form documentation, and the example wikis reviewed for #152 follow that split, linking the README for installation rather than holding reference in it. #156 departed from it only because a wiki on a repository under 500 stars is not indexed by search engines. Search indexing is not a priority for this repository, so that reason does not hold.
+
+**Rejected.** Keeping the reference in the README (#156): it departs from the guidance for a reason this repository does not weigh. Keeping it in both: two copies drift.
+
+**Residual.** Reference moved to the wiki cannot be found through a web search while the repository is below 500 stars. Until #163 lands, Home links the README sections that hold it.
+
+**Companion.** #166; the move in #163. Earlier decision: #156.
