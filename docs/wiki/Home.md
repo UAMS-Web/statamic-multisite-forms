@@ -22,7 +22,8 @@ Some guides are still being written; their groups below say which ticket tracks 
 
 ## Guides for developers
 
-Reading forms by site through the API and in code. Tracked in [#160](https://github.com/UAMS-Web/statamic-multisite-forms/issues/160).
+- [Listing forms by site through the API](Listing-forms-by-site-through-the-API.md): the `site` filter on the REST and GraphQL form listings.
+- [Reading a form as a site sees it](Reading-a-form-as-a-site-sees-it.md): resolve a form for a site in PHP, with its overrides applied.
 
 ## Reference
 

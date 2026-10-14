@@ -13,9 +13,13 @@
 - [Giving editors access by site](Giving-editors-access-by-site.md)
 - [Attributing submissions from before the add-on](Attributing-submissions-from-before-the-add-on.md)
 
+**Guides for developers**
+
+- [Listing forms by site through the API](Listing-forms-by-site-through-the-API.md)
+- [Reading a form as a site sees it](Reading-a-form-as-a-site-sees-it.md)
+
 **Still being written**
 
-- [Guides for developers](Home.md#guides-for-developers)
 - [Troubleshooting](Home.md#troubleshooting)
 
 **Reference**
