@@ -1,6 +1,6 @@
 **[Home](Home.md)**
 
-- [Getting started](Home.md#getting-started)
+- [Your first multisite form](Your-first-multisite-form.md)
 - [Guides for site builders](Home.md#guides-for-site-builders)
 - [Guides for administrators](Home.md#guides-for-administrators)
 - [Guides for developers](Home.md#guides-for-developers)

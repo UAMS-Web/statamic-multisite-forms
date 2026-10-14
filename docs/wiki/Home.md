@@ -7,7 +7,7 @@ Some guides are still being written; their groups below say which ticket tracks 
 ## Getting started
 
 - [Installation (README)](https://github.com/UAMS-Web/statamic-multisite-forms#installation): add the package to a multisite install.
-- *Your first multisite form*: assign a form to two sites and see each site's submissions. Tracked in [#157](https://github.com/UAMS-Web/statamic-multisite-forms/issues/157).
+- [Your first multisite form](Your-first-multisite-form.md): assign a form to one site, then two, and see each site's submissions and recipients.
 
 ## Guides for site builders
 
