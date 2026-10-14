@@ -6,7 +6,7 @@ Each step is marked **Person** when it needs someone with an account, or **Repo*
 
 ## Before anything is submitted
 
-1. **Repo.** The README describes only what exists, and the features it lists are real. It currently labels them as planned.
+1. **Repo.** The README describes only what exists, and the features it lists are real. #163 rewrote *Status* and *What it does* to describe what ships; check it again before submitting.
 2. **Repo.** `composer.json` is complete for a public package: `name`, `description`, `keywords`, `type` of `statamic-addon`, `license`, `authors`, `support`, `autoload`, `extra.statamic` (`name`, `description`) and `extra.laravel.providers`. A test (`tests/Unit/SubmissionReadinessTest.php`) pins these.
 3. **Repo.** The built Control Panel assets are committed (`resources/dist`) and the `Built assets` job is green, because a Composer install does not run npm.
 4. **Person.** Record the decision to submit as a comment on #26, made by the operator. This is the gate: no later step starts before it.
