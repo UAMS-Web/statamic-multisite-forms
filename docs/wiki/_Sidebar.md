@@ -8,9 +8,13 @@
 - [Giving each site its own title, email and store](Giving-each-site-its-own-title-email-and-store.md)
 - [Checking a form's site in a template](Checking-a-forms-site-in-a-template.md)
 
+**Guides for administrators**
+
+- [Giving editors access by site](Giving-editors-access-by-site.md)
+- [Attributing submissions from before the add-on](Attributing-submissions-from-before-the-add-on.md)
+
 **Still being written**
 
-- [Guides for administrators](Home.md#guides-for-administrators)
 - [Guides for developers](Home.md#guides-for-developers)
 - [Troubleshooting](Home.md#troubleshooting)
 
