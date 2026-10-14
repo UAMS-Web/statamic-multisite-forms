@@ -37,6 +37,8 @@ site_overrides:
         html: emails/contact
 ```
 
+A row saved in the Control Panel also carries an `id` on the row and on each email, which the Control Panel uses to track them, and writes `store` as the text `'true'` or `'false'`. Leave both as they are: the add-on reads `'false'` the same as `false`, and a row written by hand needs no `id`.
+
 ## What each site then does
 
 With the file above:
