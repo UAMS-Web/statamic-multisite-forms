@@ -39,5 +39,6 @@ This wiki holds the documentation: a walkthrough, task guides by role, the refer
 
 ## Project
 
+- [Project](Project.md): reporting a problem, how releases work, development notes and the license.
 - [Report a problem](https://github.com/UAMS-Web/statamic-multisite-forms/issues)
 - [Releases](https://github.com/UAMS-Web/statamic-multisite-forms/releases)
