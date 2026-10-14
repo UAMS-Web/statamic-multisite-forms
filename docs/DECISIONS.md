@@ -486,3 +486,15 @@ The adversarial review of this change found an older gap in the id rule, reprodu
 **Residual.** Not measured on `statamic/eloquent-driver`, which this repository does not install; whether it stores `''` in its JSON column is open, and #65 can measure it. A file with another non-handle `_site` value behaves the same way and is not covered. Nothing finds such submissions; the command repairs them when run on their form.
 
 **Companion.** #130; build in #140. Earlier decisions: #40, #78, #81.
+
+## 2026-10-13: The wiki holds guides, written in `docs/wiki/` and published by github-wiki-action (#156)
+
+**Decision.** The GitHub wiki holds guides: a walkthrough, task guides by role, troubleshooting and project links. The README keeps the reference for settings, tags, commands and permissions. Wiki pages are written in `docs/wiki/` and reviewed in pull requests, and `.github/workflows/publish-wiki.yml` publishes the folder with github-wiki-action pinned to v5.0.6 (`1bbb428`) when a release is published, or by hand. Pages are not edited in the browser.
+
+**Why.** Search engines index a wiki only on a repository with at least 500 stars and restricted public editing, so reference kept only in the wiki could not be found from a web search; the README is indexed and shown on Packagist. A wiki takes no pull requests, so pages written in the browser would get no review and no checks. The action replaces the whole wiki with the folder on every run (it deletes every other file in the wiki clone and force-pushes), which makes the folder the single source.
+
+**Rejected.** Writing the pages directly in the wiki: no review, and the first chosen plan before the action's behavior was known. Moving most of the README into the wiki: the reference would drop out of search. GitHub Pages: a site to build and host for documentation that fits a README and a handful of guides.
+
+**Residual.** An edit made in the browser is lost at the next publish without warning; the footer of every page says where to edit instead. The behaviors listed under *Test on the first publish* in `.claude/skills/github-wiki/SKILL.md` are settled on #156 after its first run.
+
+**Companion.** #156; skill in #152 and #154; guides in #157 to #163; a shared skill in `UAMS-Web/uams-claude-skills#172`.

@@ -84,9 +84,10 @@ jobs:
       - uses: Andrew-Chen-Wang/github-wiki-action@1bbb4280446f9630e8e21a18012cbacf3b0f992e # v5.0.6
         with:
           path: docs/wiki
+          disable-empty-commits: true
 ```
 
-Take input names from the pinned commit's `action.yml`, not from the README: at v5.0.6 the code reads `disable_empty_commits`, while the default-branch README documents `disable-empty-commits`.
+Take inputs from the pinned commit's `action.yml`, not from the default-branch README, which documents unreleased ones. A workflow uses the hyphenated names `action.yml` declares (`disable-empty-commits`); its composite step passes each one on as the environment variable `cli.ts` reads (`INPUT_DISABLE_EMPTY_COMMITS`), so the underscored spelling in `cli.ts` is not a workflow input name.
 
 Publishing on every push to `main` instead keeps the wiki current with the default branch, which suits a repository whose wiki documents unreleased work. Whichever trigger is chosen, the footer says which release the pages were written against.
 
