@@ -495,6 +495,6 @@ The adversarial review of this change found an older gap in the id rule, reprodu
 
 **Rejected.** Writing the pages directly in the wiki: no review, and the first chosen plan before the action's behavior was known. Moving most of the README into the wiki: the reference would drop out of search. GitHub Pages: a site to build and host for documentation that fits a README and a handful of guides.
 
-**Residual.** An edit made in the browser is lost at the next publish without warning; the footer of every page says where to edit instead. The behaviors listed under *Test on the first publish* in `.claude/skills/github-wiki/SKILL.md` are settled on #156 after its first run.
+**Residual.** An edit made in the browser is lost at the next publish without warning; the footer of every page says where to edit instead. The first publish settled four platform behaviors and left five open; `.claude/skills/github-wiki/SKILL.md` lists both, and the guide tickets settle the rest as their pages need them.
 
 **Companion.** #156; skill in #152 and #154; guides in #157 to #163; a shared skill in `UAMS-Web/uams-claude-skills#172`.

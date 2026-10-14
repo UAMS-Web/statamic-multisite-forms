@@ -12,7 +12,7 @@ description: >-
 ---
 # GitHub wiki
 
-A GitHub wiki is a separate git repository (`<repo>.wiki.git`) rendered under the repository's Wiki tab. This skill collects what was verified about it: GitHub's own documentation, the publishing action's source, Stack Overflow answers, and a set of well-regarded example wikis. The sources and the date they were read are listed at the end. Where a behavior was reported but not verified, it is in *Test on the first publish* rather than stated as fact.
+A GitHub wiki is a separate git repository (`<repo>.wiki.git`) rendered under the repository's Wiki tab. This skill collects what was verified about it: GitHub's own documentation, the publishing action's source, Stack Overflow answers, and a set of well-regarded example wikis. The sources and the date they were read are listed at the end. Where a behavior was reported but not verified, it is listed under *Still open* rather than stated as fact.
 
 ## README or wiki: decide by who has to find it
 
@@ -49,7 +49,7 @@ A wiki edited in the browser has no review, no checks and no tie to a release. K
 
 1. Clones the wiki repository.
 2. **Deletes every file in the clone except `.git`** (`cli.ts`, lines 75 to 81), then copies the folder in. Any page not in the folder is gone after the publish, including pages created or edited in the browser.
-3. With `preprocess` (the default), renames `README.md` to `Home.md` and rewrites links to Markdown pages as bare page names: `[Install](Install.md#requirements)` becomes `[Install](Install#requirements)`, so the heading fragment survives. Only pages directly in the folder are rewritten; v5.0.6 reads the folder without descending into subfolders.
+3. With `preprocess` (the default), renames `README.md` to `Home.md` and rewrites links to Markdown pages as bare page names: `[Install](Install.md#requirements)` becomes `[Install](Install#requirements)`, so the heading fragment survives. **A link to `README.md` becomes `Home` only when it carries nothing after the extension**: `cli.ts` line 115 compares the whole rewritten URL with `README`, so `README.md#setup` is published as `README#setup`, a page that does not exist. Every page is also re-serialized by remark, so the published Markdown differs in formatting from the source (`-` bullets become `*   `). Only pages directly in the folder are rewritten; v5.0.6 reads the folder without descending into subfolders.
 4. Commits and runs `git push -f origin master`. It force-pushes even with the default `clone` strategy, so a browser edit made between two publishes is overwritten without a merge.
 
 **What that requires:**
@@ -59,6 +59,8 @@ A wiki edited in the browser has no review, no checks and no tie to a release. K
 - **Link between pages with relative Markdown links that carry the extension** (`[Install](Install.md)`). They work when the folder is browsed in the repository and become wiki links on publish.
 - **The workflow needs `contents: write`.** The default `github.token` is enough for the repository's own wiki; another repository's wiki needs a personal access token.
 - **Pin the action to the commit**, not the moving `v5` tag, and update the pin deliberately after reading what changed.
+- **Name the home page's source `Home.md`, not `README.md`,** and link it as `Home.md` or `Home.md#heading`. Both are rewritten by the general rule and also work when the folder is browsed in the repository.
+- **Link issues and pull requests in full.** A bare `#123` on a wiki page is plain text, not a link.
 - **Create the first page in the browser before the first run.** The publish replaces it.
 
 Released v5.0.6 does not rewrite links to files elsewhere in the repository. A link from a wiki page to `docs/DECISIONS.md` has to be a full `https://github.com/<owner>/<repo>/blob/main/...` URL. The unreleased main branch adds that rewriting and a `direction: pull` mode that copies browser edits back into the folder; neither is available at the pinned commit.
@@ -114,21 +116,25 @@ The pages are durable records in the repository, so the repository's own rules a
 
 - [`american-english-prose`](../../rules/american-english-prose.md), [`no-em-dashes`](../../rules/no-em-dashes.md) and [`no-emoji-in-durable-records`](../../rules/no-emoji-in-durable-records.md), with the sweeps those rules give.
 - The private-network-address check from [`writing-issues`](../writing-issues/SKILL.md), since a wiki on a public repository is public.
-- Every link between pages points at a file that exists in the folder, with its extension.
+- Every link between pages points at a file that exists in the folder, with its extension. Check this in the folder, not on the published wiki: a missing wiki page answers `302` to the wiki's Home, the same as a broken link, so a link checker that reads HTTP status reports every broken wiki link as working, and a browser following one with a heading fragment lands on Home looking deliberate.
 - The sidebar, Home and footer list the same pages under the same labels. A page in the folder that none of them links is an orphan.
 
-## Test on the first publish
+## Settled on a first publish, and still open
 
-Reported but not verified, or left open by every source. Settle each on the first publish and record the result in the ticket that adds the workflow:
+Measured on `UAMS-Web/statamic-multisite-forms`'s wiki, 2026-10-13, from the published wiki repository and the server-rendered page (run `38491805944`, action v5.0.6):
 
-1. A bare page link produced by the rewrite (`Install`) resolves from Home as well as from another page. One older answer reports relative links breaking on Home.
-2. A link to a heading on another page (`Install#requirements`) scrolls to that heading.
-3. Whether GitHub shows an outline of the page's headings. One answer from 2021 says it does; if so, only Troubleshooting needs its own list of links.
-4. Whether `#123` in a wiki page links to the issue.
-5. Whether `antlers` and `blade` code blocks are highlighted.
-6. Whether a custom `_Sidebar.md` replaces the generated page list or appears beside it.
-7. Whether images under `images/` render through a relative link after the rewrite.
-8. Whether GitHub alert blocks (`> [!NOTE]`) render on wiki pages; until then the page shapes use bold *Note* and *Warning* paragraphs.
+- **`#123` is not autolinked** on a wiki page; it renders as plain text.
+- **A custom `_Sidebar.md` appears beside the generated page list**, not in place of it.
+- **Headings get anchors** (`id="user-content-<slug>"`, with the slug GitHub uses for READMEs), so `Page#heading` links have a target.
+- **`README.md#heading` is not rewritten to Home** (see step 3 above), and the missing page it names redirects to Home.
+
+Still open, to settle on the first page that needs each and record here:
+
+1. Whether a `Page#heading` link from another page scrolls to the heading in a browser. The anchors exist in the server HTML; the scroll was not observed.
+2. Whether GitHub shows an outline of a page's headings. Nothing in the server HTML shows one; it may be drawn by script. If it exists, only Troubleshooting needs its own list of links.
+3. Whether `antlers` and `blade` code blocks are highlighted.
+4. Whether images under `images/` render through a relative link.
+5. Whether GitHub alert blocks (`> [!NOTE]`) render on wiki pages; until then the page shapes use bold *Note* and *Warning* paragraphs.
 
 ## Avoid
 

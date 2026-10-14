@@ -1,11 +1,11 @@
-**[Home](README.md)**
+**[Home](Home.md)**
 
-- [Getting started](README.md#getting-started)
-- [Guides for site builders](README.md#guides-for-site-builders)
-- [Guides for administrators](README.md#guides-for-administrators)
-- [Guides for developers](README.md#guides-for-developers)
-- [Troubleshooting](README.md#troubleshooting)
-- [Project](README.md#project)
+- [Getting started](Home.md#getting-started)
+- [Guides for site builders](Home.md#guides-for-site-builders)
+- [Guides for administrators](Home.md#guides-for-administrators)
+- [Guides for developers](Home.md#guides-for-developers)
+- [Troubleshooting](Home.md#troubleshooting)
+- [Project](Home.md#project)
 
 **Reference**
 
