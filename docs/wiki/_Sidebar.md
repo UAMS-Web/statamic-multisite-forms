@@ -18,9 +18,9 @@
 - [Listing forms by site through the API](Listing-forms-by-site-through-the-API.md)
 - [Reading a form as a site sees it](Reading-a-form-as-a-site-sees-it.md)
 
-**Still being written**
+**Troubleshooting**
 
-- [Troubleshooting](Home.md#troubleshooting)
+- [Troubleshooting](Troubleshooting.md)
 
 **Reference**
 

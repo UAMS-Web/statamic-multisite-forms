@@ -2,8 +2,6 @@ Multisite Forms makes Statamic forms per-site in a multisite install. A form can
 
 This wiki holds the documentation: a walkthrough, task guides by role, the reference, and troubleshooting. The [README](https://github.com/UAMS-Web/statamic-multisite-forms#readme) keeps an overview, the requirements and installation.
 
-Some guides are still being written; their groups below say which ticket tracks them.
-
 ## Getting started
 
 - [Installation (README)](https://github.com/UAMS-Web/statamic-multisite-forms#installation): add the package to a multisite install.
@@ -37,7 +35,7 @@ Some guides are still being written; their groups below say which ticket tracks 
 
 ## Troubleshooting
 
-One entry per symptom: the message or behavior you see, its cause and the fix. Tracked in [#161](https://github.com/UAMS-Web/statamic-multisite-forms/issues/161).
+- [Troubleshooting](Troubleshooting.md): one entry per symptom, from the message or behavior you see to its cause and fix.
 
 ## Project
 
