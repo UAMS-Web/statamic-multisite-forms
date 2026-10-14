@@ -17,7 +17,8 @@ Some guides are still being written; their groups below say which ticket tracks 
 
 ## Guides for administrators
 
-Giving editors access by site, and attributing submissions from before the add-on. Tracked in [#159](https://github.com/UAMS-Web/statamic-multisite-forms/issues/159).
+- [Giving editors access by site](Giving-editors-access-by-site.md): a role for one site, and what an editor with it sees and can change.
+- [Attributing submissions from before the add-on](Attributing-submissions-from-before-the-add-on.md): record a site on older submissions so that site's editors see them.
 
 ## Guides for developers
 
