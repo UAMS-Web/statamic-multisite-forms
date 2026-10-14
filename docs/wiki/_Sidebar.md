@@ -35,5 +35,6 @@
 
 **Project**
 
+- [Project](Project.md)
 - [Report a problem](https://github.com/UAMS-Web/statamic-multisite-forms/issues)
 - [Releases](https://github.com/UAMS-Web/statamic-multisite-forms/releases)
