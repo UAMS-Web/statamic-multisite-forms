@@ -11,7 +11,9 @@ Some guides are still being written; their groups below say which ticket tracks 
 
 ## Guides for site builders
 
-Showing a form on some sites only, per-site settings, and checking a form's site in a template. Tracked in [#158](https://github.com/UAMS-Web/statamic-multisite-forms/issues/158).
+- [Showing a form on some sites only](Showing-a-form-on-some-sites-only.md): assign a form to some sites, and choose what the others show.
+- [Giving each site its own title, email and store](Giving-each-site-its-own-title-email-and-store.md): a site override row, and showing the site's title in an email.
+- [Checking a form's site in a template](Checking-a-forms-site-in-a-template.md): hide a heading, or show something else, where the form does not render.
 
 ## Guides for administrators
 
