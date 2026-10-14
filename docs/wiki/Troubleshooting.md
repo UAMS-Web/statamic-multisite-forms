@@ -1,4 +1,4 @@
-Written against v0.5.0.
+Written against v0.6.0.
 
 One entry per symptom, as you meet it: the message or behavior, its cause, and the fix.
 
