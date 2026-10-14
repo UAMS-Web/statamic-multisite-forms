@@ -1,4 +1,4 @@
-Written against v0.6.0.
+Written against v0.6.1.
 
 Where to report a problem, how releases work, and where the development notes live.
 

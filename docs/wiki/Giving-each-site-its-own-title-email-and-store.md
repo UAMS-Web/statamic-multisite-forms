@@ -1,4 +1,4 @@
-Written against v0.6.0.
+Written against v0.6.1.
 
 A form shared by several sites can have a different title, email and storage choice on each. Add a row for each site that differs; a site without a row uses the form's own settings.
 
