@@ -1,16 +1,19 @@
 # Multisite Forms for Statamic
 
-A Statamic add-on that makes forms per-site in a multisite install: site assignment, per-site overrides, and site-separated submissions in flat files.
+A Statamic add-on that makes forms per-site in a multisite install: site assignment, per-site overrides, and site-separated submissions.
+
+The documentation is in the [wiki](https://github.com/UAMS-Web/statamic-multisite-forms/wiki): the reference for every setting, tag, command and permission, and guides as they are written.
 
 ## Status
 
-Early development. Site assignment is in progress: a form's settings screen has a Sites field, a submit from a site the form is not assigned to answers 404, the form tags follow the `not_assigned` setting below, and a new submission records the site it was made from under `_site`. Per-site overrides of a form's title, email and store apply from the form file and are edited in the form's settings screen. In the Control Panel, a user sees only the forms of sites they can access. The rest of "What it will do" is the plan, not what ships today. It is free, has no editions, and is licensed under MIT.
+Early development: releases are 0.x pre-releases, and the package is not on Packagist yet. Everything under "What it does" ships today. It is free, has no editions, and is licensed under MIT.
 
-## What it will do
+## What it does
 
-- **Site assignment:** choose which sites of a multisite install a form belongs to.
-- **Per-site overrides:** override a form's settings for one site without touching the others.
-- **Site-separated submissions:** store each site's submissions apart from the others, in Statamic's flat files.
+- **Site assignment:** a Sites field in a form's settings chooses the sites the form belongs to; left empty, the form belongs to every site. On any other site the form tags render nothing or a 404, as [configured](https://github.com/UAMS-Web/statamic-multisite-forms/wiki/Configuration), and a submit answers 404. Each new submission records the site it was made from.
+- **Per-site overrides:** a site can have its own title, email recipients and store setting for a shared form, edited in the form's settings. See [Per-site title, email and store](https://github.com/UAMS-Web/statamic-multisite-forms/wiki/Per-site-title-email-and-store).
+- **Site-separated submissions:** in the Control Panel, a user sees the forms and submissions of the sites they can access, through core's site permissions, with a Site filter on the submissions listing and export. A command records a site on submissions saved before the add-on. See [Control Panel access](https://github.com/UAMS-Web/statamic-multisite-forms/wiki/Control-Panel-access) and the [attribute command](https://github.com/UAMS-Web/statamic-multisite-forms/wiki/Attribute-command).
+- **For templates and code:** a [`form:assigned` tag](https://github.com/UAMS-Web/statamic-multisite-forms/wiki/Form-assigned-tag) to check a form's site, a [`site` filter](https://github.com/UAMS-Web/statamic-multisite-forms/wiki/API-site-filter) on the API's form listings, and a [read-only view of a form](https://github.com/UAMS-Web/statamic-multisite-forms/wiki/Site-form-view) for the page's site.
 
 ## Requirements
 
@@ -31,161 +34,27 @@ Statamic discovers the add-on from the package, and it appears under Addons in t
 
 ## Configuration
 
-Publish the config file to change a setting:
+The add-on has one setting. Publish the config file to change it:
 
 ```sh
 php artisan vendor:publish --tag=statamic-multisite-forms-config
 ```
 
-That writes `config/statamic-multisite-forms.php`. It has one setting.
+That writes `config/statamic-multisite-forms.php`.
 
-### `not_assigned`
+| Key | Values | Default |
+| --- | --- | --- |
+| `not_assigned` | `empty` renders nothing and logs a warning; `404` aborts with the site's 404 page | `empty` |
 
-What the `{{ form }}` tags (`form:create`, the `{{ form:contact }}` shorthand, `form:errors`, `form:success`, `form:submission` and `form:submissions`) do with a form that is not assigned to the site the page is rendered for:
+It decides what the form tags do with a form that is not assigned to the page's site. The [Configuration](https://github.com/UAMS-Web/statamic-multisite-forms/wiki/Configuration) page has the details.
 
-- `empty` (the default) renders nothing, and `form:submissions` renders as it does for a form with no submissions, so a `no_results` branch still shows. A warning naming the form and the site is logged at `warning` level, once per form and site per request, so a shared layout that renders the form on every page logs one line per page view rather than one per tag.
-- `404` aborts the request with the site's 404 page, as Statamic's `{{ 404 }}` tag does. If the 404 page's layout renders the same form, it renders nothing there rather than aborting again.
+## Quick start
 
-The setting is checked each time the add-on boots, for every request and `artisan` command: any other value, including `null` from an unset `env()` variable, is logged at `error` level naming the setting and the value. A page that meets an unassigned form with such a value then fails with the same message, since the add-on cannot tell which behavior was meant. Pages with no unassigned form are unaffected.
+1. In the Control Panel, open a form's settings and choose its sites in the **Sites** field.
+2. Render it as usual, for example with `{{ form:create in="contact" }} ... {{ /form:create }}`. On a site the form is not assigned to, the tags follow `not_assigned`.
+3. To give one site its own title, recipients or store setting, add a row under **Site overrides** in the same section.
 
-`form:fields` inside `form:create` needs no gate of its own: it renders only the fields `form:create` hands it.
-
-Fetched with no template to render, as `Statamic::tag('form:create')->params(['in' => 'contact'])->fetch()` does in Blade or PHP, `form:create` returns the form's data as an array, as Statamic's does. Under `empty`, an unassigned form returns an empty array instead, so guard the markup that reads it:
-
-```blade
-@php($form = Statamic::tag('form:create')->params(['in' => 'contact'])->fetch())
-@if ($form)
-    <form method="{{ $form['attrs']['method'] }}" action="{{ $form['attrs']['action'] }}">
-        ...
-    </form>
-@endif
-```
-
-Without the guard, reading `$form['attrs']` fails on a site the form is not assigned to.
-
-A form assigned to the page's site, and a form with no sites, render as Statamic renders them. A submit to a form from a site it is not assigned to always answers 404, whatever `not_assigned` says.
-
-## Per-site title, email and store
-
-A form shared by several sites can differ on each for three settings: its `title`, its `email` recipients, and whether it `store`s submissions. Each site that differs gets one row under `site_overrides` in the form file; a site without a row, and any setting a row leaves out, uses the form's own value.
-
-```yaml
-# resources/forms/contact.yaml
-title: Contact
-store: true
-email:
-  - to: info@example.com
-    subject: Website inquiry
-sites: [en, es]
-site_overrides:
-  - site: es
-    title: Contacto
-    store: false
-    email:
-      - to: info-es@example.com
-        subject: Consulta del sitio
-```
-
-Here a submission from the English site is stored and emailed to `info@example.com`; one from the Spanish site is emailed to `info-es@example.com` only and is not stored. A row's `email` replaces the form's list rather than adding to it. An empty `title` or `email` in a row uses the form's own value, so leaving one blank never clears it for that site. `store` is read as `true` or `false`, or as the strings `'true'` and `'false'` the Control Panel saves; anything else uses the form's setting. Other keys in a row are ignored.
-
-In the Control Panel, the rows are edited under **Site overrides** in the Sites section of a form's settings. Each row picks one site and sets any of the three values; its email list has the same columns as the form's own. A row for a site the form is not assigned to, or a second row for the same site, is refused when saving.
-
-## Control Panel access
-
-Access to forms in the Control Panel follows the site access a user already has, through core's `access {site} site` permissions; there are no new permission keys.
-
-- A form assigned to sites is hidden from, and refused to, a user who can access none of them. Its submissions are refused the same way.
-- Within a form a user can open, the submissions listing, a submission's detail view, deleting one, the export, and the count on the forms index show only submissions recorded for a site the user can access. A submission with no recorded site, such as one saved before the add-on was installed, shows only to a user who can access every site its form is assigned to, or every site for a form with no sites. Deleting a form still deletes every one of its submissions. The API, the `form:submissions` tag and console commands are not scoped.
-- A **Site** filter on the submissions listing narrows it, and an export made with it applied, to the submissions recorded for one site. It offers the sites the user can access that the form is assigned to, and appears only when there are at least two. A chosen site leaves out submissions with no recorded site.
-- Editing a form's settings, deleting it, or editing its fields needs access to every site it is assigned to, or to every site for a form with no sites, because each change reaches all of them.
-- `configure forms` does not bypass either rule. Only super users do, which narrows what core allows that permission.
-- A form created by a user who cannot access every site is assigned to the sites they can access, so they can still edit it. A form that already lists sites when it is created, such as a duplicate of an assigned form, keeps them.
-- Core's Duplicate action is refused for a form the user cannot view, and is not offered for one. A copy keeps its source's sites.
-
-A form whose `sites` names a site no longer configured is open to super users only.
-
-## Attributing older submissions
-
-A submission with no recorded site, such as one saved before the add-on was installed or by code that saves a submission itself, shows in the Control Panel only to users who can access every site its form is assigned to. To show a form's unattributed submissions to the editors of one site, record that site on them:
-
-```sh
-php please multisite-forms:attribute contact en --dry-run   # list what would change
-php please multisite-forms:attribute contact en
-```
-
-The command records the site on every submission of the form that has none, and leaves submissions that already record a site alone. It prints each submission it changes and a count, and logs each change at `info` level with the form, the submission's id and the site. `--dry-run` prints the same list and changes nothing. An unknown form or site, or a site the form is not assigned to, is an error and changes nothing; a form with no sites takes any site. Handles match exactly, including case. Submissions are saved quietly, so no submission event fires, and no email is sent, as for any save outside the submit route. A submission whose file records an empty site (`_site: ''`), which only a file written outside Statamic, such as a direct import, can hold, shows only to super users; the command counts it as unattributed and records the site in its place. It works with submissions in flat files or in the database through `statamic/eloquent-driver`.
-
-## Filtering the API's form listings by site
-
-Where Statamic's REST API or GraphQL exposes forms, their form listings take an optional `site` filter, which lists only the forms assigned to that site, together with the forms that have no sites:
-
-```sh
-curl 'https://example.com/api/forms?site=es'
-```
-
-```graphql
-{
-  forms(site: "es") {
-    handle
-    title
-  }
-}
-```
-
-Without the filter, or with `site: null` in GraphQL, the listings are Statamic's. A `site` that names no configured site is an error rather than an empty list: the REST API answers 422 with a message, and GraphQL answers a `validation` error. The filter narrows only the forms the API already exposes, and the single-form endpoint and query are unchanged. Submissions are not filtered.
-
-## Checking a form's site in a template
-
-`form:assigned` answers whether a form renders on the page's site, so a template can hide what surrounds it, such as a heading or an introduction. It is true for a form assigned to the site or one with no sites, and false for a form assigned elsewhere or one that does not exist. It never aborts or logs, whatever `not_assigned` says.
-
-In Antlers, use it as a condition, or as a tag pair that renders its contents only when the form is assigned:
-
-```antlers
-{{ if {form:assigned in="contact"} }}
-    <h2>Contact us</h2>
-{{ /if }}
-
-{{ form:assigned in="contact" }}
-    <p>We reply within two working days.</p>
-{{ /form:assigned }}
-```
-
-In Blade, fetch it, or use the tag pair as a component:
-
-```blade
-@if (Statamic::tag('form:assigned')->params(['in' => 'contact'])->fetch())
-    <h2>Contact us</h2>
-@endif
-
-<s:form:assigned in="contact">
-    <p>We reply within two working days.</p>
-</s:form:assigned>
-```
-
-The tag names the form the way `form:create` does: with `in`, `handle`, `is`, `form` or `formset`, or from a form in the template's context. Like Statamic's own `form:create` and `form:errors`, its name takes precedence over a form whose handle is `assigned` in the `{{ form:assigned }}` shorthand; render such a form with `{{ form:create in="assigned" }}`.
-
-## Forms seen from a site
-
-The add-on hands templates and the submit route a read-only view of a form for the page's site, a `UAMSWeb\MultisiteForms\Forms\SiteForm`. It carries the stored form's values and refuses to be saved or deleted. A submission made on the front end is built from that view, so `$submission->form()` in an event listener returns it.
-
-The view is always a subclass of Statamic's own `Statamic\Forms\Form`, whatever class your forms are stored as. Where a driver stores forms in its own class, such as `statamic/eloquent-driver`'s `Statamic\Eloquent\Forms\Form`, that class's methods are not on the view: `model()` throws, and an `instanceof` check against the driver's class is false. Reach them through `base()`, which returns the stored form in its own class:
-
-```php
-use Statamic\Events\FormSubmitted;
-use UAMSWeb\MultisiteForms\Forms\SiteForm;
-
-Event::listen(function (FormSubmitted $event) {
-    $form = $event->submission->form();
-
-    if ($form instanceof SiteForm) {
-        $form = $form->base();
-    }
-
-    $row = $form->model(); // the driver's own method
-});
-```
-
-`site()` on the view returns the handle of the site it was resolved for. The view carries its site's overridden title, email and store, and no `site_overrides` rows: those stay on `base()`, so other sites' recipients never reach a template's `form_config`.
+New submissions record their site, and editors limited to some sites see only those sites' submissions.
 
 ## Development
 
@@ -194,7 +63,7 @@ composer install
 composer ci    # Pint, Rector dry run, Larastan, Pest (Unit and Integration)
 ```
 
-[`docs/DEVELOPMENT.md`](docs/DEVELOPMENT.md) describes the development loop against a real multisite host, and the project conventions are in [`AGENTS.md`](AGENTS.md).
+[`docs/DEVELOPMENT.md`](docs/DEVELOPMENT.md) describes the development loop against a real multisite host, and the project conventions are in [`AGENTS.md`](AGENTS.md). The wiki's pages are written in [`docs/wiki/`](docs/wiki/) and published from there.
 
 ## License
 
