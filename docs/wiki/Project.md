@@ -12,7 +12,7 @@ Support is community support through the issue tracker; there is no paid support
 
 Releases are listed on the [releases page](https://github.com/UAMS-Web/statamic-multisite-forms/releases), each with notes grouped into what is new, fixed, security and maintenance, and any breaking change called out first.
 
-- The add-on is in early development: every release is a 0.x pre-release, and the package is not on Packagist yet. See [Installation (README)](https://github.com/UAMS-Web/statamic-multisite-forms#installation).
+- The add-on is in early development: every release is a 0.x pre-release, published on [Packagist](https://packagist.org/packages/uams-web/statamic-multisite-forms). See [Installation (README)](https://github.com/UAMS-Web/statamic-multisite-forms#installation).
 - A release is cut each business day at 10:00 US Central time when `main` has unreleased work, so each one carries at most a day's changes.
 - A minor version (`0.5.0`) carries new features, and can carry a breaking change, which its notes describe with the action to take; a patch version (`0.4.2`) carries refinements only.
 - These wiki pages are republished with each release.

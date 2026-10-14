@@ -6,7 +6,7 @@ The documentation is in the [wiki](https://github.com/UAMS-Web/statamic-multisit
 
 ## Status
 
-Early development: releases are 0.x pre-releases, and the package is not on Packagist yet. Until 1.0.0, a minor release (0.6 to 0.7) can carry a breaking change; its release notes call it out first, with the action to take. Everything under "What it does" ships today. It is free, has no editions, and is licensed under MIT. What 1.0.0 waits on is listed in [#180](https://github.com/UAMS-Web/statamic-multisite-forms/issues/180).
+Early development: releases are 0.x pre-releases, published on [Packagist](https://packagist.org/packages/uams-web/statamic-multisite-forms). Until 1.0.0, a minor release (0.6 to 0.7) can carry a breaking change; its release notes call it out first, with the action to take. Everything under "What it does" ships today. It is free, has no editions, and is licensed under MIT. What 1.0.0 waits on is listed in [#180](https://github.com/UAMS-Web/statamic-multisite-forms/issues/180).
 
 ## What it does
 
@@ -24,10 +24,9 @@ Early development: releases are 0.x pre-releases, and the package is not on Pack
 
 ## Installation
 
-The package is not published on Packagist yet, so it cannot be installed with a plain `composer require`. Until it is, add the repository to the host's `composer.json` and require a tagged release from there:
+Require the package in the host application:
 
 ```sh
-composer config repositories.multisite-forms vcs https://github.com/UAMS-Web/statamic-multisite-forms
 composer require uams-web/statamic-multisite-forms:^0.6
 ```
 
