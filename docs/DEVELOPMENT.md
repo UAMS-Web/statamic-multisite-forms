@@ -89,7 +89,7 @@ php artisan test vendor/uams-web/statamic-multisite-forms/tests/Feature/HostRegi
 
 ## Patch leakage
 
-The add-on's dev patches (`extra.patches` for `pestphp/pest-plugin-mutate`) must not touch the host. Checked against the host's lock after the install: `pestphp/pest-plugin-mutate` and `cweagans/composer-patches` are not in the host's `vendor/` or its `composer.lock` package lists, so no patch was applied to any host package. The add-on's own entry in the host's `composer.lock` carries its `extra` block, patches included, as metadata only.
+The add-on's dev patches for `pestphp/pest-plugin-mutate` must not touch the host, so they are declared in a root-only `patches.json`, never in `extra.patches` (#178). Composer copies a package's `extra` block into the host's `composer.lock`, and `cweagans/composer-patches` reads `extra.patches` back out of it for every package the host requires, so a host running that plugin alongside `pest-plugin-mutate` would try to apply them. The plugin has no such path for a dependency's `patches.json`, and the file is left out of the dist archive. The Herd host above is unaffected either way, since it installs neither package.
 
 ## Platforms
 
