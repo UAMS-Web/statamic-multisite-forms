@@ -1,4 +1,4 @@
-Written against v0.4.2.
+Written against v0.5.0.
 
 A front end built on Statamic's REST API or GraphQL can ask for the forms of one site rather than every form. Pass the site's handle as the `site` filter on the form listing; the result is the forms assigned to that site, together with the forms that have no sites.
 
