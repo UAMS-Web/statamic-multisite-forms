@@ -1,8 +1,8 @@
 Multisite Forms makes Statamic forms per-site in a multisite install. A form can be shown on some sites only, give each site its own title, email and storage choice, and keep each site's submissions apart in the Control Panel.
 
-This wiki holds guides: a walkthrough, task guides by role, and troubleshooting. Reference for settings, tags, commands and permissions stays in the [README](https://github.com/UAMS-Web/statamic-multisite-forms#readme), where search engines and Packagist show it.
+This wiki holds the documentation: a walkthrough, task guides by role, the reference for settings, tags, commands and permissions, and troubleshooting. The [README](https://github.com/UAMS-Web/statamic-multisite-forms#readme) keeps an overview, the requirements and installation.
 
-The guides are being written. Until a group's pages are here, it links the README sections that cover the same ground.
+The pages are being written, and the reference is moving here from the README. Until a group's pages are here, it links the README sections that cover the same ground.
 
 ## Getting started
 
@@ -31,6 +31,12 @@ Reading forms by site through the API and in code. Tracked in [#160](https://git
 
 - [Filtering the API's form listings by site (README)](https://github.com/UAMS-Web/statamic-multisite-forms#filtering-the-apis-form-listings-by-site)
 - [Forms seen from a site (README)](https://github.com/UAMS-Web/statamic-multisite-forms#forms-seen-from-a-site)
+
+## Reference
+
+Settings, tags, the attribute command, permissions and the API filter, moving here from the README. Tracked in [#163](https://github.com/UAMS-Web/statamic-multisite-forms/issues/163).
+
+- [Configuration (README)](https://github.com/UAMS-Web/statamic-multisite-forms#configuration)
 
 ## Troubleshooting
 

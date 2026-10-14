@@ -14,16 +14,14 @@ description: >-
 
 A GitHub wiki is a separate git repository (`<repo>.wiki.git`) rendered under the repository's Wiki tab. This skill collects what was verified about it: GitHub's own documentation, the publishing action's source, Stack Overflow answers, and a set of well-regarded example wikis. The sources and the date they were read are listed at the end. Where a behavior was reported but not verified, it is listed under *Still open* rather than stated as fact.
 
-## README or wiki: decide by who has to find it
+## README or wiki: overview in the README, the rest in the wiki
 
-GitHub's guidance is that the README gives the quick overview and the wiki holds long-form documentation. One constraint overrides that split for a small repository:
+GitHub's guidance is that the README says what the project does and how to get started, and the wiki holds long-form documentation. The example wikis follow the same split. So:
 
-**Search engines index a wiki only when the repository has at least 500 stars and public editing is restricted.** Below that, nothing in the wiki can be found through web search, while the README is indexed on the repository page and shown on Packagist. So:
-
-- **Reference stays in the README:** configuration keys, tags, commands, permissions, API parameters. Someone searching the web for a setting lands there.
-- **The wiki holds guides:** a first walkthrough, task guides by audience, troubleshooting, and extending. These read better as linked pages than as one long README.
-- **The wiki links to README sections rather than copying them.** Label the link so the reader knows they are leaving the wiki: `Configuration (README)`.
-- **GitHub Pages is the alternative** when the documentation must be searchable and too large for a README. GitHub recommends it for that case.
+- **The README holds the overview and getting started:** what the project does, its status, requirements, installation, a short quick start, and a link to the wiki. Development notes and the license stay there too.
+- **The wiki holds everything long-form, reference included:** configuration, tags, commands, permissions and API parameters, alongside the walkthrough, task guides, troubleshooting and extending.
+- **Where the wiki needs something the README covers, it links instead of copying**, labeled so the reader knows they are leaving the wiki: `Installation (README)`. Installation is the usual case.
+- **Know the trade-off:** search engines index a wiki only when the repository has at least 500 stars and public editing is restricted, so reference moved to the wiki of a smaller repository cannot be found through a web search. Weigh it, and record the choice where the repository keeps its decisions. **GitHub Pages** is the alternative when documentation must be searchable and too large for a README; GitHub recommends it for that case.
 
 ## Platform facts
 
@@ -97,8 +95,8 @@ Publishing on every push to `main` instead keeps the wiki current with the defau
 
 These patterns come from the example wikis that read well (NullAway, Sniffnet) and the problems of those that do not.
 
-- **Group the sidebar by what the reader is trying to do, one level deep.** A bold label per group and a flat list under it: *Getting started*, *Guides for site builders*, *Guides for administrators*, *Guides for developers*, *Troubleshooting*, *Project*. A deep or ungrouped sidebar leaves the generated page list as the only usable navigation.
-- **Make Home a map:** one short paragraph on what the wiki covers and what stays in the README, then the sidebar's groups with a one-line description per link. Use the same labels as the sidebar, so the two lists cannot drift apart.
+- **Group the sidebar by what the reader is trying to do, one level deep.** A bold label per group and a flat list under it: *Getting started*, *Guides for site builders*, *Guides for administrators*, *Guides for developers*, *Reference*, *Troubleshooting*, *Project*. A deep or ungrouped sidebar leaves the generated page list as the only usable navigation.
+- **Make Home a map:** one short paragraph on what the wiki covers and what the README keeps, then the sidebar's groups with a one-line description per link. Use the same labels as the sidebar, so the two lists cannot drift apart.
 - **Add a footer** that repeats the top-level groups as a one-line menu, links the README and the repository, names the release the pages were written against, and says where to edit: `Edit these pages in docs/wiki/ through a pull request; edits made here are overwritten.`
 - **Name pages in sentence case with hyphens and no prefixes:** `Your-first-multisite-form.md`, `Showing-a-form-on-some-sites-only.md`. The sidebar does the grouping, so a prefix only lengthens the title.
 - **Model the narrative on the upstream project's docs** when the repository extends one. Statamic's forms documentation is one narrative page that opens with *Your first form* and then covers tasks, with one page per tag holding the reference. A Statamic add-on's wiki reads naturally in the same order, and links to the matching Statamic page wherever it changes that page's behavior.
@@ -106,7 +104,8 @@ These patterns come from the example wikis that read well (NullAway, Sniffnet) a
 ## Page shapes
 
 - **Walkthrough:** what the reader will have at the end, then short numbered steps, each one an action and its visible result. Mark cautions as a bold *Note* or *Warning* paragraph. End with links to the guides that go further.
-- **Task guide:** the situation in a sentence, the steps, then *Reference* links into the README for every setting the guide used.
+- **Task guide:** the situation in a sentence, the steps, then *Reference* links to the wiki's reference pages for every setting the guide used.
+- **Reference page:** one page per area (configuration, a tag, a command, permissions, an API parameter), each opening with what it is for, then a table or list of every option with its type, default and effect, and an example. Statamic's tag pages are the model: an overview, examples, then a table of parameters or variables.
 - **Troubleshooting:** one heading per symptom, written as the reader meets it: the exact log line or error text, or the visible behavior (`A submit answers 404`). Under it: the cause, an example, and the fix. Give the page a short list of links to its headings at the top, since it is the page readers scan.
 - **Version marking:** begin a page that depends on a release with `Written against vX.Y.Z.`, and mark a behavior added later with `Since vX.Y.Z`. When a problem is fixed, move its troubleshooting entry to a *Fixed* section naming the release instead of deleting it (AWS ParallelCluster's known-issues pages do this). Without a marker, stale pages read as current: Hystrix's (2017) and Guava's (2016) do.
 
@@ -138,7 +137,7 @@ Still open, to settle on the first page that needs each and record here:
 
 ## Avoid
 
-- **Copying README reference into the wiki.** Two copies drift; link instead.
+- **Keeping the same content in the README and the wiki.** Two copies drift. Move it to one and link from the other.
 - **Editing pages in the browser once publishing runs from the repository.** The next publish deletes the edit.
 - **Translations as page copies.** ArchiSteamFarm's locale twins grew its wiki to 1,312 pages.
 - **Undated pages and orphan pages,** which read as current and complete when they are neither.
