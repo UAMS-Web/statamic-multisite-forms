@@ -7,8 +7,9 @@ description: >-
   the package pointed at your branch. Activate whenever the user asks to "run the host-app
   tests", "validate the change in the host app", "test the integration", or wants to confirm a
   package change end-to-end before merging, or when a change touches behavior only
-  `tests/Feature/` exercises. For WHICH base class a test needs, defer to `tests/CLAUDE.md`; this
-  skill is the slot SETUP + RUN + result-interpretation procedure on top of it.
+  `tests/Feature/` exercises. For WHICH base class a test needs, defer to the
+  `statamic-package-conventions` skill; this skill is the slot SETUP + RUN + result-interpretation
+  procedure on top of it.
 ---
 <!--
   Synced from UAMS-Web/uams-claude-skills: shared/.claude/skills/host-app-tests/SKILL.md
@@ -30,7 +31,7 @@ php artisan test vendor/<vendor>/<package>/tests/Feature/<File>.php
 
 Neither the package's gate nor its static analysis exercises them. So a change that only alters behavior reachable through the host (anything a real run of the package inside the application would touch) is **not validated** until you run this subset in the host. That is this skill.
 
-`tests/CLAUDE.md` is the companion rule: it decides **which** base class a test needs. This skill is the **setup + run** procedure and does not restate that taxonomy.
+The *Choosing a base class* section of the [`statamic-package-conventions`](../statamic-package-conventions/SKILL.md) skill is the companion rule: it decides **which** base class a test needs. This skill is the **setup + run** procedure and does not restate that taxonomy.
 
 ## When a run is obligatory
 
@@ -94,7 +95,7 @@ Run by explicit path; the default suite will not pick these up:
 php artisan test vendor/<vendor>/<package>/tests/Feature/<File>.php --compact
 ```
 
-- The host-app-bound tests all live under `tests/Feature/` (see `tests/CLAUDE.md`); run them by that path.
+- The host-app-bound tests all live under `tests/Feature/` (see the base-class rule in the `statamic-package-conventions` skill); run them by that path.
 - Scope to the files your change actually touches. These are multi-minute runs.
 - **Do not run two files concurrently against one tree.** They share the host's content state and collide. Run them sequentially; the concurrency ceiling in a single package slot is **one**. Bound each run per the [`long-running-commands`](../rule-long-running-commands/SKILL.md) rule rather than letting a tool timeout detach it.
 - **Bound generously above the *high* end of the observed spread**, and do not calibrate off one suite: a cap set at the fast figure manufactures a "timeout" that reads exactly like a failure. Treat any single recorded figure as a lower bound.
@@ -121,7 +122,7 @@ This subset carries a standing set of **pre-existing** failures that are unrelat
    php artisan test vendor/<vendor>/<package>/tests/Feature/<File>.php --filter=<test_method>
    ```
 
-   If it fails **identically on clean `origin/main`**, it is pre-existing, not your change. Restore your branch files afterward. Do the isolation with `--filter`: some of these failures are order-dependent and only appear in a full-file run (`tests/CLAUDE.md` notes mock-collision ordering artifacts as one such case).
+   If it fails **identically on clean `origin/main`**, it is pre-existing, not your change. Restore your branch files afterward. Do the isolation with `--filter`: some of these failures are order-dependent and only appear in a full-file run.
 
 A run is "green for your change" when every failure **reproduces on clean `origin/main`**. That is revert-and-compare, step 3, and it is the durable half because it depends on no ticket staying open. A match in a tracker table is a shortcut to the same conclusion, not a substitute for it. The count being zero is neither necessary nor sufficient.
 
@@ -141,7 +142,7 @@ That failure is worse than an ordinary wrong command because of where it sits: a
 
 ## References
 
-- `tests/CLAUDE.md`: which of the base classes a test needs (the companion rule).
+- The [`statamic-package-conventions`](../statamic-package-conventions/SKILL.md) skill: which base class a test needs (the companion rule).
 - The [`worktrees`](../rule-worktrees/SKILL.md) rule: the slot lifecycle this composes with (claim, refresh, release).
 - The [`host-only-behavior-needs-a-host-run`](../rule-host-only-behavior-needs-a-host-run/SKILL.md) rule: when a run is obligatory.
 

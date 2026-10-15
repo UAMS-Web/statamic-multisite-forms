@@ -99,8 +99,7 @@ The test-enforcement rules (every change tested, the paths to cover, self-skippi
 - **A test's base class decides its directory, and the directory decides where it runs.** A
   host-bound test placed in `tests/Unit/` or `tests/Integration/` breaks the standalone gate with
   `Class "Tests\TestCase" not found`; a standalone test placed in `tests/Feature/` never runs
-  there. The rule for choosing the base class is in `tests/CLAUDE.md`, which Claude Code loads
-  when working under `tests/`; any other agent reads it first.
+  there. The rule for choosing the base class is in *Choosing a base class* below.
 - **`Feature` tests need the booted host application**, and run from a host worktree with the
   package pointed at your branch: the [`host-app-tests`](../host-app-tests/SKILL.md) skill is the
   procedure, and the [`host-only-behavior-needs-a-host-run`](../rule-host-only-behavior-needs-a-host-run/SKILL.md)
@@ -113,6 +112,27 @@ The test-enforcement rules (every change tested, the paths to cover, self-skippi
   tests are still valid and still run in their suites. Do **not** mass-convert them: port a test
   with the `phpunit-to-pest` skill only when you are already modifying it. Converting Pest to
   PHPUnit is backwards; don't.
+
+### Choosing a base class
+
+Choosing the wrong base class does not fail at edit time: it fails when the suite runs, as
+`BindingResolutionException: Target class [config] does not exist` or `Class "Tests\TestCase" not
+found` at `setUp()`, and a host-bound test in the wrong directory simply never runs where it should.
+Neither the package's gate nor PHPStan catches it. Work down this ladder and stop at the first match:
+
+1. **The test needs the host application** (real collections, entries, blueprints or Stache state,
+   a database trait such as `RefreshDatabase`, the console kernel's dispatcher, or a fixture corpus
+   that CI does not have): extend the host's `Tests\TestCase`, put the test in `tests/Feature/`, and
+   run it from a host worktree (the `host-app-tests` skill).
+2. **The test needs a booted Statamic but no real content** (container-resolved services, Statamic
+   facades, a Laravel facade spy): extend the package's Testbench base (`Statamic\Testing\AddonTestCase`)
+   and put the test in `tests/Integration/`.
+3. **The test needs nothing from a framework:** extend a bare `PHPUnit\Framework\TestCase` and put
+   the test in `tests/Unit/`.
+
+Never "fix" a PHPStan error by dropping `use Tests\TestCase;` or by moving a host-bound test to a
+lower base class. That trades a static complaint for a silent runtime break; fix the stub or the
+stub path PHPStan reads instead.
 
 ### Running tests
 
