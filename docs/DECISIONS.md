@@ -550,3 +550,14 @@ The adversarial review of this change found an older gap in the id rule, reprodu
 **Rejected.** Waiting for legal before changing the line: the department name is wrong under either of #3039's options, and the campus is the operator's choice until legal gives another form. Leaving the legal decision out of the 1.0.0 criteria: a license or copyright change after 1.0.0 would land on installs that took the release as settled.
 
 **Companion.** #180; `UAMS-Web/uams-statamic#3039`.
+
+## 2026-10-22: The ruleset requires one aggregate check, and the drift check is removed (#169)
+
+**Decision.** `ci.yml` ends in a `CI` job that `needs:` every other job and fails unless each reports `success`. The organization ruleset for this repository requires `CI`, `Attribution footer` and `Closing keywords` and no per-job name. `check-required-checks.yml`, `scripts/check-required-checks.mjs` and its test are removed.
+
+**Why.** The ruleset listed 17 job names, so every rename or added job meant editing the ruleset, and the drift check existed only to report when the two lists disagreed. With one aggregate name the lists cannot disagree: a job that is not in `needs:` of `CI` is the only drift left, and the template's own check in `UAMS-Web/uams-claude-skills` covers it. Supersedes the 2026-10-12 entry on the drift check (#11).
+
+**Rejected.** Keeping the drift check beside the aggregate: it would compare a list of three names with job names it no longer has to match. Gating `CI` on a remote-CI variable: this repository is public and runs every job on every pull request.
+
+**Companion.** `UAMS-Web/uams-claude-skills#292`, `#291`, `#296`.
+
