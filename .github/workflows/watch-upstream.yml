@@ -66,7 +66,7 @@ jobs:
         run: |
           set -euo pipefail
 
-          # One file per upstream we're waiting on, in `.github/upstream-watches/` (UAMS-Web/uams-statamic#2673). The loader
+          # One file per upstream we're waiting on, in `.github/upstream-watches/` (UAMS-Web/uams-statamic-archive#2673). The loader
           # validates every file and fails the run when there are none or one is malformed, so a wrong
           # path can never read as "nothing to watch". Each row's reasoning is in that directory's
           # README.md.
@@ -81,7 +81,7 @@ jobs:
           dow=$(date -u +%u)   # 1 = Monday (UTC), the weekly-heartbeat day.
 
           # Idempotency: the sentinel is per-SIGNAL, not per-tracker, because one tracker can carry
-          # several upstream rows (UAMS-Web/uams-statamic#1729 has two). A per-tracker marker would let the first trip
+          # several upstream rows (UAMS-Web/uams-statamic-archive#1729 has two). A per-tracker marker would let the first trip
           # permanently silence the second, so a merged PR could go unreported because the issue had
           # already closed weeks earlier. Keyed by repo#number, each signal notifies exactly once.
           sentinel_for() { printf '<!-- watch-upstream:tripped:%s#%s -->' "$1" "$2"; }
@@ -151,7 +151,7 @@ jobs:
               fi
 
               # Signal C - a merged pull request's fix reaching a release (rows with `released: true`,
-              # UAMS-Web/uams-statamic#2727). A merge does not retire a patch; the first release carrying it does. The check
+              # UAMS-Web/uams-statamic-archive#2727). A merge does not retire a patch; the first release carrying it does. The check
               # takes the newest stable tag on the pull request's base-branch line (a `13.x` fix is
               # never in a `12.x` tag) and asks the compare API whether it contains the merge commit.
               # It posts once, under its own sentinel, separate from the MERGED one. A failed check

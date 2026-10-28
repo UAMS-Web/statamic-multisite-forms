@@ -3,12 +3,12 @@
 //
 // Enforces .claude/rules/no-emoji-in-durable-records.md, which was documented
 // and unenforced: no job in the CI chain looked for a glyph, so the corpus
-// could drift out of compliance with nothing reporting it (UAMS-Web/uams-statamic#2234).
+// could drift out of compliance with nothing reporting it (UAMS-Web/uams-statamic-archive#2234).
 //
 // Scope is the paths that rule names -- `.claude/`, `docs/`, `README.md` and `AGENTS.md` -- plus `.github/`,
 // whose issue and pull-request templates are durable records. `src/`, `tests/` are deliberately NOT scanned: the rule does
 // not reach source files in this repository, and whether it should is a
-// separate scope question (UAMS-Web/uams-statamic#2234).
+// separate scope question (UAMS-Web/uams-statamic-archive#2234).
 //
 // Two traps this implementation exists to avoid, both measured:
 //
@@ -46,7 +46,7 @@ export const EXCLUDED = new Set([0x2122, 0x00ae]);
 /**
  * Files where a glyph is table data rather than ornament, and is therefore allowed.
  *
- * Empty. The only entries were the `afk-waves` tracking corpus (UAMS-Web/uams-statamic#2234, UAMS-Web/uams-statamic#2238), whose
+ * Empty. The only entries were the `afk-waves` tracking corpus (UAMS-Web/uams-statamic-archive#2234, UAMS-Web/uams-statamic-archive#2238), whose
  * status column used glyphs as cell values against a legend; that skill and its
  * catalog were removed, so nothing is exempt.
  *
@@ -141,7 +141,7 @@ export function main() {
 
 
     /*
-     * SELF-CHECK, in the scanning invocation rather than in a test (UAMS-Web/uams-statamic#2234).
+     * SELF-CHECK, in the scanning invocation rather than in a test (UAMS-Web/uams-statamic-archive#2234).
      *
      * The failure this exists for is not a wrong pattern -- it is a correct pattern that
      * never meets its input. A `perl -ne` range scan without `-CSD` reads UTF-8 as Latin-1

@@ -3,7 +3,7 @@
 declare(strict_types=1);
 
 /**
- * Test-isolation guard (UAMS-Web/uams-statamic#1149)  -  fail the build when a test uses a
+ * Test-isolation guard (UAMS-Web/uams-statamic-archive#1149)  -  fail the build when a test uses a
  * parallel-unsafe, shared-state pattern without quarantining it.
  *
  * The suite runs under `pest --parallel` (paratest): ~N workers share one
@@ -23,14 +23,14 @@ declare(strict_types=1);
  *            `Str::random`, `bin2hex`) anywhere in the call: a fixed shared path
  *            two runs race.
  *   Rule C  -  a global-namespace `const`/`function` name declared in more than one
- *            parallel-group file (UAMS-Web/uams-statamic#1471): namespace-less Pest files fatal
+ *            parallel-group file (UAMS-Web/uams-statamic-archive#1471): namespace-less Pest files fatal
  *            ("Constant X already defined" / "Cannot redeclare X()") the instant
  *            paratest lands both in one worker. Rules A/B are per-file; this one is
  *            cross-file  -  the collision is invisible to any single-file scan.
  *            Namespaced declarations and nested (class-const / method / closure)
  *            symbols are exempt; a name in exactly one file is always fine.
  *   Rule D  -  a top-level single-segment `use X;` in a file with NO named
- *            namespace (UAMS-Web/uams-statamic#1867): the import is a guaranteed no-op  -  the class is
+ *            namespace (UAMS-Web/uams-statamic-archive#1867): the import is a guaranteed no-op  -  the class is
  *            already global  -  and PHP raises `E_WARNING` "The use statement with
  *            non-compound name 'X' has no effect" at COMPILE time. Laravel's
  *            error handler promotes that to `ErrorException`, which under
@@ -38,13 +38,13 @@ declare(strict_types=1);
  *            the whole band with it. Invisible everywhere else: the file passes
  *            run alone, passes in the serial tail, and is green under Pint,
  *            Rector and Larastan. Only the parallel band turns the warning fatal.
- *   Rule E  -  an `assert(` or `\assert(` call anywhere under `tests/` (UAMS-Web/uams-statamic#1865).
+ *   Rule E  -  an `assert(` or `\assert(` call anywhere under `tests/` (UAMS-Web/uams-statamic-archive#1865).
  *            Not a parallelism rule; it rides here because this is already the
  *            suite's token-level lint and its CI job. `assert()` was the suite's
  *            habit for narrowing a type for PHPStan, which is wrong three ways:
  *            `zend.assertions=-1` compiles the call out, so the narrowing is
  *            configuration-dependent; a bare failure names no cause; and larastan
- *            passes on the suppression rather than on the types. UAMS-Web/uams-statamic#1733 removed the
+ *            passes on the suppression rather than on the types. UAMS-Web/uams-statamic-archive#1733 removed the
  *            eleven unqualified narrowings but its `^\s*assert(` search never
  *            matched the dominant fully-qualified form, and shipped no guard  -
  *            which is exactly why 157 of them survived. Narrow by control flow
@@ -78,7 +78,7 @@ declare(strict_types=1);
  * path (forward slashes); each row lists the rules it exempts and a reason that
  * argues for each of them. A row suppresses only the rules it names: the file is
  * still scanned for every other rule, so a later change that trips one of those
- * is reported (UAMS-Web/uams-statamic#2939). Only the parallelism rules A, B, C and D can be named;
+ * is reported (UAMS-Web/uams-statamic-archive#2939). Only the parallelism rules A, B, C and D can be named;
  * Rule E runs before this lookup, and a row naming any other rule is refused.
  * An entry that no longer matches its rules is a harmless no-op  -  prune it when
  * its reason is resolved.
@@ -429,7 +429,7 @@ function scanForViolations(string $contents): array
 /**
  * Scan a file's PHP tokens for `assert(` / `\assert(` calls (Rule E).
  *
- * Both spellings are one construct, and UAMS-Web/uams-statamic#1733's line-anchored `^\s*assert(`
+ * Both spellings are one construct, and UAMS-Web/uams-statamic-archive#1733's line-anchored `^\s*assert(`
  * search matched only the first  -  which is how 157 fully-qualified narrowings
  * survived a sweep that reported the suite clean. Matching on tokens catches
  * both regardless of leading whitespace, wrapping, or a preceding `(`.

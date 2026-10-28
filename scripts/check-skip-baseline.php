@@ -3,18 +3,18 @@
 declare(strict_types=1);
 
 /**
- * Skip-baseline guard (UAMS-Web/uams-statamic#1744)  -  fail a Pest band whose skipped-test count exceeds
+ * Skip-baseline guard (UAMS-Web/uams-statamic-archive#1744)  -  fail a Pest band whose skipped-test count exceeds
  * the count recorded for it.
  *
  * The gate treats "zero failures" as success, so a run that silently skips tests
- * reports PASS having tested less than it should have. During UAMS-Web/uams-statamic#1726's validation
+ * reports PASS having tested less than it should have. During UAMS-Web/uams-statamic-archive#1726's validation
  * three tests self-skipped and the band still passed  -  caught only because a skip
  * count had been predicted in advance and checked by hand.
  *
  * Skipping is how this suite degrades when content or Stache state is unavailable,
  * and that is deliberate: the content guards report an unresolvable entry as a
- * benign "requires the content/ submodule" skip (UAMS-Web/uams-statamic#1738), and a worker whose Stache
- * snapshot copy failed starves every content-dependent test in it (UAMS-Web/uams-statamic#1740). The
+ * benign "requires the content/ submodule" skip (UAMS-Web/uams-statamic-archive#1738), and a worker whose Stache
+ * snapshot copy failed starves every content-dependent test in it (UAMS-Web/uams-statamic-archive#1740). The
  * problem is not the skipping  -  it is that the coverage loss is invisible to the
  * gate, indistinguishable in the output from a healthy run.
  *

@@ -1,6 +1,6 @@
 #!/usr/bin/env node
 /**
- * Build `watch-upstream.yml`'s `WATCHES` array from one file per row (UAMS-Web/uams-statamic#2673).
+ * Build `watch-upstream.yml`'s `WATCHES` array from one file per row (UAMS-Web/uams-statamic-archive#2673).
  *
  * Every row used to live in one single-line JSON string inside the workflow, so any
  * two pull requests that each added a row edited the same line and conflicted. A
@@ -10,7 +10,7 @@
  *
  * Each file in `.github/upstream-watches/` holds exactly the object a row held
  * before: `tracker`, `repo`, `kind` (`issue` | `pr`), `number`, and optionally
- * `composer`, and `released` on a pull-request row (UAMS-Web/uams-statamic#2727). It is named `<tracker>-<owner>-<repo>-<number>.json`, so the name is
+ * `composer`, and `released` on a pull-request row (UAMS-Web/uams-statamic-archive#2727). It is named `<tracker>-<owner>-<repo>-<number>.json`, so the name is
  * unique and says what it watches.
  *
  * IT FAILS RATHER THAN RETURN AN EMPTY LIST. A wrong path, a checkout that did not

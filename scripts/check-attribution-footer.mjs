@@ -1,12 +1,12 @@
 #!/usr/bin/env node
-// Fails when a pull-request body carries the harness attribution footer (UAMS-Web/uams-statamic#2701).
+// Fails when a pull-request body carries the harness attribution footer (UAMS-Web/uams-statamic-archive#2701).
 //
-// UAMS-Web/uams-statamic#2321 forbids that footer in pull-request and issue bodies, and the harness
+// UAMS-Web/uams-statamic-archive#2321 forbids that footer in pull-request and issue bodies, and the harness
 // instructs authors to add it, so it arrives on pull request after pull request
 // and was being removed by hand at the gate. No existing check could see it:
 // `check-no-emoji.mjs` scans the filesystem, and a body is not on it.
 //
-// The footer arrives in three forms, measured on the UAMS-Web/uams-statamic#2701 specimens: a marker
+// The footer arrives in three forms, measured on the UAMS-Web/uams-statamic-archive#2701 specimens: a marker
 // line carrying an emoji, a bare harness session URL carrying no emoji at all,
 // or both together. So a hit is EITHER marker. A check keyed on the emoji alone
 // passed four of the first eight specimens; one keyed on the URL alone passed
@@ -98,7 +98,7 @@ export function main(path) {
     }
 
     for (const hit of hits) {
-        console.log(`::error::Line ${hit.line} of the pull-request body carries ${hit.marker}. UAMS-Web/uams-statamic#2321 forbids the harness attribution footer in pull-request bodies, and the no-emoji rule forbids emoji there.`);
+        console.log(`::error::Line ${hit.line} of the pull-request body carries ${hit.marker}. UAMS-Web/uams-statamic-archive#2321 forbids the harness attribution footer in pull-request bodies, and the no-emoji rule forbids emoji there.`);
     }
 
     return 1;
