@@ -1,6 +1,6 @@
 #!/usr/bin/env node
 /**
- * Assert that `docs/DECISIONS.md` is in oldest-first order (UAMS-Web/uams-statamic#2236).
+ * Assert that `docs/DECISIONS.md` is in oldest-first order (UAMS-Web/uams-statamic-archive#2236).
  *
  * The log states its own convention in its opening lines and nothing enforced
  * it, so six entries had drifted out of order by the time anyone looked. The
@@ -13,7 +13,7 @@
  * unsorted" is not an actionable message.
  *
  * It also asserts the ENTRY SEPARATOR: one blank line before every entry heading
- * (UAMS-Web/uams-statamic#2463). `docs/DECISIONS.md merge=union` resolves the log's tail without a
+ * (UAMS-Web/uams-statamic-archive#2463). `docs/DECISIONS.md merge=union` resolves the log's tail without a
  * conflict by appending ours-then-theirs, and the append drops the blank line at
  * the seam. That is cosmetic - both this checker and its siblings match the
  * heading per line, so a welded entry is still parsed - but it accumulates: eight
@@ -39,7 +39,7 @@
  * Bare, it reads `docs/DECISIONS.md` under the working directory, which is how
  * CI and `scripts/local-ci.mjs` run it. `--file <path>` (or `--file=<path>`)
  * reads that path instead, so a revision other than the checkout can be checked
- * from an extracted copy (UAMS-Web/uams-statamic#2910). Any other argument exits 2: an argument the
+ * from an extracted copy (UAMS-Web/uams-statamic-archive#2910). Any other argument exits 2: an argument the
  * script ignored would read as a report on the file it named. Every outcome
  * names the file read, for the same reason.
  */

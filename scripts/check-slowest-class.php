@@ -3,31 +3,31 @@
 declare(strict_types=1);
 
 /**
- * Slowest-class cost guard (UAMS-Web/uams-statamic#1890)  -  fail a Pest band whose costliest test class
- * takes too large a SHARE of the band's summed class time (UAMS-Web/uams-statamic#2530), or exceeds a
+ * Slowest-class cost guard (UAMS-Web/uams-statamic-archive#1890)  -  fail a Pest band whose costliest test class
+ * takes too large a SHARE of the band's summed class time (UAMS-Web/uams-statamic-archive#2530), or exceeds a
  * generous absolute backstop.
  *
  * The gate reports PASS on any duration, so nothing in the repo pins what the
  * parallel band costs and a change that reclaims it passes in silence. That has
  * happened twice, and neither time did anything go red:
  *
- * - UAMS-Web/uams-statamic#1348 added `mitydigital/sitemapamic`, which registers one `sitemap.xml` route
+ * - UAMS-Web/uams-statamic-archive#1348 added `mitydigital/sitemapamic`, which registers one `sitemap.xml` route
  *   per site  -  255 on this multisite. Laravel's uncached URL generation scales with
  *   route count, so the render-heavy suite paid a ~2x tax on every test. Finding it
  *   took a wall-time bisect across a fixed 226-file set at successive commits
- *   (UAMS-Web/uams-statamic#1521 -> UAMS-Web/uams-statamic#1573).
+ *   (UAMS-Web/uams-statamic-archive#1521 -> UAMS-Web/uams-statamic-archive#1573).
  * - One class grew to 1085.3s  -  83% of a 1306s band. SchemaJsonLdLocationTest bound
  *   the band while eleven of twelve workers idled, and it surfaced only because
- *   UAMS-Web/uams-statamic#1718's sharding spike happened to run a per-class profile (UAMS-Web/uams-statamic#1797).
+ *   UAMS-Web/uams-statamic-archive#1718's sharding spike happened to run a per-class profile (UAMS-Web/uams-statamic-archive#1797).
  *
  * WHAT THE NUMBER IS. A JUnit `time` attribute is the WALL-CLOCK time each test
  * took, not the CPU time it used. So a class's summed `time` moves with machine load
  * exactly as the band's wall time does: on an oversubscribed host every class
- * inflates together. UAMS-Web/uams-statamic#2525 red the `pest` job this way on a branch that changed
+ * inflates together. UAMS-Web/uams-statamic-archive#2525 red the `pest` job this way on a branch that changed
  * nothing relevant  -  identical test and assertion counts, the costliest class up
  * from 263.7s to 784.9s, while the host carried eleven competing `pest` processes at
  * a 15-minute load average of 28.9 on 12 cores. An absolute ceiling on that number
- * is the flaky wall-time assert UAMS-Web/uams-statamic#1537 ruled out, one level down.
+ * is the flaky wall-time assert UAMS-Web/uams-statamic-archive#1537 ruled out, one level down.
  *
  * WHY A SHARE. The costliest class's share of the band's summed class time is
  * dimensionless, so inflation that hits every class alike cancels out of it. It is
@@ -36,7 +36,7 @@ declare(strict_types=1);
  * unit, and a class starts costing wall-clock once its share passes 1/workers.
  *
  * WHY AN ABSOLUTE BACKSTOP AS WELL. A share cannot see growth that hits every class
- * at once  -  a per-test boot cost, like UAMS-Web/uams-statamic#1348's route-count tax, raises every class
+ * at once  -  a per-test boot cost, like UAMS-Web/uams-statamic-archive#1348's route-count tax, raises every class
  * together and leaves every share where it was. The backstop catches that, and it is
  * set far enough above contended readings that load alone does not reach it.
  *

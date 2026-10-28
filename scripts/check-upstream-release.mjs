@@ -1,6 +1,6 @@
 #!/usr/bin/env node
 /**
- * Decide whether an upstream pull request's merge has shipped in a release (UAMS-Web/uams-statamic#2727).
+ * Decide whether an upstream pull request's merge has shipped in a release (UAMS-Web/uams-statamic-archive#2727).
  *
  * `watch-upstream.yml` calls this for a merged `kind: pr` row that carries
  * `released: true`. A merge alone does not retire a local patch: `composer update` can only

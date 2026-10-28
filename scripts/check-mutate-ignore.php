@@ -34,7 +34,7 @@ declare(strict_types=1);
  *      the same line without the space suppresses everything. `pint`'s
  *      `no_trailing_whitespace` removes it, so a formatting-only commit can flip mutation
  *      semantics in either direction.
- *      THIS REPOSITORY PATCHES THAT AWAY (UAMS-Web/uams-statamic#2327): the capture is trimmed before the empty
+ *      THIS REPOSITORY PATCHES THAT AWAY (UAMS-Web/uams-statamic-archive#2327): the capture is trimmed before the empty
  *      test, so the two forms become identical and this reason is a FALSE POSITIVE wherever
  *      the patch is applied. The check is therefore skipped when the vendored plugin carries
  *      it, and kept when it does not -- which is every checkout whose `vendor/` predates the
@@ -65,7 +65,7 @@ if (! is_dir($mutatorDir)) {
 
 /** @var array<string, true> $known */
 /**
- * Whether the vendored plugin carries the annotation-parsing patch (UAMS-Web/uams-statamic#2327).
+ * Whether the vendored plugin carries the annotation-parsing patch (UAMS-Web/uams-statamic-archive#2327).
  *
  * The patch trims the captured tail before testing it for empty, which makes a bare marker
  * with trailing whitespace behave exactly like one without. Reason 3 is therefore correct
@@ -234,7 +234,7 @@ foreach ($roots as $root) {
             }
 
             if (trim($tail) === '') {
-                // Only inert on an unpatched plugin; with UAMS-Web/uams-statamic#2327's trim applied this
+                // Only inert on an unpatched plugin; with UAMS-Web/uams-statamic-archive#2327's trim applied this
                 // suppresses everything, exactly as the space-free form does.
                 if (! $trimPatchApplied) {
                     $findings[] = [$where, 'bare marker with trailing whitespace suppresses NOTHING', trim(explode('

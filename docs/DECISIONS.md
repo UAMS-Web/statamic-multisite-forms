@@ -543,13 +543,13 @@ The adversarial review of this change found an older gap in the id rule, reprodu
 
 ## 2026-10-14: The copyright holder is the University of Arkansas for Medical Sciences, and 1.0.0 waits on UAMS legal's licensing decision (#180)
 
-**Decision.** `LICENSE` names `University of Arkansas for Medical Sciences` as the copyright holder, in place of `UAMS Web Services`. 1.0.0 also waits on UAMS legal's general decision on licensing and disclosing public `UAMS-Web` repositories (`UAMS-Web/uams-statamic#3039`) being applied here: the license, the copyright line, any paths the code license must exclude, and the disclosure. #180 carries that as a criterion and is blocked by #3039. The license stays MIT, and `composer.json`'s `authors` keep `UAMS Web Services`, which credits the team that wrote the code rather than naming its owner.
+**Decision.** `LICENSE` names `University of Arkansas for Medical Sciences` as the copyright holder, in place of `UAMS Web Services`. 1.0.0 also waits on UAMS legal's general decision on licensing and disclosing public `UAMS-Web` repositories (`UAMS-Web/uams-statamic#261`) being applied here: the license, the copyright line, any paths the code license must exclude, and the disclosure. #180 carries that as a criterion and is blocked by #3039. The license stays MIT, and `composer.json`'s `authors` keep `UAMS Web Services`, which credits the team that wrote the code rather than naming its owner.
 
 **Why.** University of Arkansas System Board Policy 210.1 gives software its employees write to the University, so the copyright line names an owner, and `UAMS Web Services` is a department, not a legal entity. The campus is the line #3039 offers alongside the Board of Trustees. The package is already public and on Packagist, so whatever legal decides about the license or the line has to land while the version still says it can change: 1.0.0 is the release that promises the surface.
 
 **Rejected.** Waiting for legal before changing the line: the department name is wrong under either of #3039's options, and the campus is the operator's choice until legal gives another form. Leaving the legal decision out of the 1.0.0 criteria: a license or copyright change after 1.0.0 would land on installs that took the release as settled.
 
-**Companion.** #180; `UAMS-Web/uams-statamic#3039`.
+**Companion.** #180; `UAMS-Web/uams-statamic#261`.
 
 ## 2026-10-22: The ruleset requires one aggregate check, and the drift check is removed (#169)
 
